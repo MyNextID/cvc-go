@@ -11,19 +11,17 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Configuration
 REPO_OWNER="MyNextID"
 REPO_NAME="cvc"
 GITHUB_API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}"
 GITHUB_DOWNLOAD_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download"
-
-# Default directories
 LIB_DIR="lib"
 INCLUDE_DIR="include"
 
-# Function to print colored output
+# Print functions
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -40,7 +38,6 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Help function
 show_help() {
     cat << EOF
 CVC Library Installer for Go
@@ -79,11 +76,9 @@ DEVELOPER WORKFLOW:
     1. Run this script to populate your Go module with all platform libraries
     2. Commit the downloaded files to version control
     3. Users can then simply 'go get your-module' with zero setup
-
 EOF
 }
 
-# Detect current platform and architecture
 detect_platform() {
     case "$(uname -s)" in
         Darwin*)
@@ -123,26 +118,20 @@ detect_platform() {
             exit 1
             ;;
     esac
-
     print_info "Detected platform: ${PLATFORM}/${ARCH}"
 }
 
-# Get latest release version from GitHub API
 get_latest_version() {
     print_info "Fetching latest release information..."
-
     local latest_release
     latest_release=$(curl -L -s -H 'Accept: application/json' "${GITHUB_API_URL}/releases/latest")
-
     if [ $? -ne 0 ]; then
         print_error "Failed to fetch release information from GitHub API"
         exit 1
     fi
 
-    # Extract tag_name from JSON response
     local version
     version=$(echo "$latest_release" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p')
-
     if [ -z "$version" ]; then
         print_error "Could not parse latest version from GitHub API response"
         exit 1
@@ -151,30 +140,81 @@ get_latest_version() {
     echo "$version"
 }
 
-# Verify version exists
 verify_version() {
     local version="$1"
     print_info "Verifying version ${version} exists..."
 
     local response
     response=$(curl -L -s -o /dev/null -w "%{http_code}" "${GITHUB_API_URL}/releases/tags/${version}")
-
     if [ "$response" != "200" ]; then
         print_error "Version ${version} not found. Please check the version number."
         print_info "You can view available versions at: https://github.com/${REPO_OWNER}/${REPO_NAME}/releases"
         exit 1
     fi
-
     print_success "Version ${version} found"
 }
 
-# Download and extract archive for specific platform/arch
+copy_headers_with_structure() {
+    local temp_dir="$1"
+    local is_first_run="$2"
+
+    # Only copy headers on first run to avoid duplicates
+    if [ "$is_first_run" != "true" ]; then
+        return 0
+    fi
+
+    print_info "Copying header files with proper directory structure..."
+
+    # Remove existing include directory if it exists
+    if [ -d "$INCLUDE_DIR" ]; then
+        rm -rf "$INCLUDE_DIR"
+    fi
+    mkdir -p "$INCLUDE_DIR"
+
+    # Find all header files in the extracted archive
+    find "$temp_dir" -name "*.h" | while read -r header_file; do
+        local filename=$(basename "$header_file")
+        local relative_path="${header_file#$temp_dir/}"
+
+        # Handle l8w8jwt headers - put them in l8w8jwt subdirectory
+        if [[ "$relative_path" == *"l8w8jwt"* ]] || [[ "$filename" == l8w8jwt* ]]; then
+            mkdir -p "${INCLUDE_DIR}/l8w8jwt"
+            cp "$header_file" "${INCLUDE_DIR}/l8w8jwt/"
+            print_success "Installed header: l8w8jwt/$filename"
+        # Handle include/include nested structure - flatten it
+        elif [[ "$relative_path" == "include/include/"* ]]; then
+            # Extract just the filename and put it directly in include/
+            cp "$header_file" "${INCLUDE_DIR}/"
+            print_success "Installed header: $filename"
+        # Handle other nested include structures
+        elif [[ "$relative_path" == "include/"* ]]; then
+            # Copy to include root, preserving any subdirectory structure after include/
+            local target_path="${relative_path#include/}"
+            if [[ "$target_path" == *"/"* ]]; then
+                # Has subdirectory structure
+                local target_dir=$(dirname "$target_path")
+                mkdir -p "${INCLUDE_DIR}/${target_dir}"
+                cp "$header_file" "${INCLUDE_DIR}/${target_path}"
+                print_success "Installed header: $target_path"
+            else
+                # Direct file
+                cp "$header_file" "${INCLUDE_DIR}/"
+                print_success "Installed header: $filename"
+            fi
+        # Handle direct header files (crypto.h, cvc.h, etc.)
+        else
+            cp "$header_file" "${INCLUDE_DIR}/"
+            print_success "Installed header: $filename"
+        fi
+    done
+}
+
 download_and_extract() {
     local version="$1"
     local platform="$2"
     local arch="$3"
+    local is_first_run="$4"
 
-    # Determine archive extension and lib extension based on platform
     local archive_ext lib_ext
     case "$platform" in
         "darwin"|"linux")
@@ -197,24 +237,18 @@ download_and_extract() {
     temp_dir=$(mktemp -d)
 
     print_info "Downloading ${archive_name}..."
-
-    # Download archive
     if ! curl -L -o "${temp_dir}/${archive_name}" "${download_url}"; then
         print_error "Failed to download ${archive_name}"
         rm -rf "$temp_dir"
         return 1
     fi
-
     print_success "Downloaded ${archive_name}"
 
     # Create target directories
     local lib_target_dir="${LIB_DIR}/${platform}/${arch}"
     mkdir -p "$lib_target_dir"
-    mkdir -p "$INCLUDE_DIR"
 
     print_info "Extracting ${archive_name}..."
-
-    # Extract based on archive type
     cd "$temp_dir"
     case "$archive_ext" in
         "tar.gz")
@@ -234,13 +268,11 @@ download_and_extract() {
             fi
             ;;
     esac
-
     cd - > /dev/null
 
-    # Find and copy the static library
+    # Copy static library
     local lib_file
     lib_file=$(find "$temp_dir" -name "*.${lib_ext}" | head -1)
-
     if [ -z "$lib_file" ]; then
         print_error "No static library (.${lib_ext}) found in archive"
         rm -rf "$temp_dir"
@@ -250,34 +282,13 @@ download_and_extract() {
     cp "$lib_file" "$lib_target_dir/"
     print_success "Installed library: ${lib_target_dir}/$(basename "$lib_file")"
 
-    # Copy header files (only once, from first platform)
-    if [ ! -f "${INCLUDE_DIR}/cvc.h" ]; then
-        print_info "Copying header files with directory structure..."
+    # Copy headers (only on first run)
+    copy_headers_with_structure "$temp_dir" "$is_first_run"
 
-        # Find all header files and preserve directory structure
-        find "$temp_dir" -name "*.h" | while read -r header_file; do
-            # Get the relative path from temp_dir
-            relative_path="${header_file#$temp_dir/}"
-
-            # Create target directory structure
-            target_file="${INCLUDE_DIR}/${relative_path}"
-            target_dir="$(dirname "$target_file")"
-
-            # Create directory if it doesn't exist
-            mkdir -p "$target_dir"
-
-            # Copy the file
-            cp "$header_file" "$target_file"
-            print_success "Installed header: $target_file"
-        done
-    fi
-
-    # Clean up
     rm -rf "$temp_dir"
     return 0
 }
 
-# Get supported architectures for a platform
 get_platform_archs() {
     local platform="$1"
     case "$platform" in
@@ -301,25 +312,25 @@ download_all_platforms() {
     local version="$1"
     local failed_downloads=()
     local platforms="darwin linux windows"
+    local is_first_run=true
 
     print_info "Downloading CVC library for all platforms..."
     echo
 
-    # Download for each platform and architecture
     for platform in $platforms; do
         local archs
         archs=$(get_platform_archs "$platform")
         for arch in $archs; do
             print_info "Processing ${platform}/${arch}..."
-            if ! download_and_extract "$version" "$platform" "$arch"; then
+            if ! download_and_extract "$version" "$platform" "$arch" "$is_first_run"; then
                 failed_downloads+=("${platform}/${arch}")
                 print_warning "Failed to download ${platform}/${arch}"
             fi
+            is_first_run=false  # Only first extraction should copy headers
             echo
         done
     done
 
-    # Report results
     if [ ${#failed_downloads[@]} -eq 0 ]; then
         print_success "All platforms downloaded successfully!"
     else
@@ -364,12 +375,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Main execution
 main() {
     print_info "CVC Library Installer for Go (All Platforms)"
     echo
 
-    # Determine version to download
+    # Get version
     if [ -z "$VERSION" ]; then
         print_info "No version specified, fetching latest release..."
         VERSION=$(get_latest_version)
@@ -379,7 +389,7 @@ main() {
         verify_version "$VERSION"
     fi
 
-    # Check if files already exist
+    # Check for existing files
     if [ -d "$LIB_DIR" ] && [ "$(ls -A "$LIB_DIR" 2>/dev/null)" ] && [ "$FORCE" != "true" ]; then
         print_warning "Library files already exist in ${LIB_DIR}/"
         read -p "Overwrite existing files? (y/N): " -n 1 -r
@@ -392,7 +402,7 @@ main() {
         rm -rf "${LIB_DIR:?}"/*
     fi
 
-    # Download all platforms
+    # Download everything
     download_all_platforms "$VERSION"
 
     echo
@@ -422,5 +432,4 @@ main() {
     echo "  3. No installation required for end users!"
 }
 
-# Run main function
 main "$@"
