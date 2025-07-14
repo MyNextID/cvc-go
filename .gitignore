@@ -30,3 +30,7 @@ go.work.sum
 # Editor/IDE
 .idea/
 .vscode/
+
+.repomixignore
+repomix.config.json
+cvc-go.xml
