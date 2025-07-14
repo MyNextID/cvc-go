@@ -22,11 +22,23 @@ func CVCHelloWorld() string {
 	return goStr
 }
 
+func CVCTestMiraclBigAdd() bool {
+	result := C.cvc_test_miracl_big_add()
+	return int(result) == 1
+}
+
 func main() {
 	fmt.Println("Testing CVC library integration...")
 
-	// Call the C function through our Go wrapper
+	// Test basic library
 	result := CVCHelloWorld()
-
 	fmt.Printf("Result from CVC library: %s\n", result)
+
+	// Test MIRACL integration
+	fmt.Println("\nTesting MIRACL integration...")
+	if CVCTestMiraclBigAdd() {
+		fmt.Println("✅ MIRACL big number addition test: PASSED (123 + 456 = 579)")
+	} else {
+		fmt.Println("❌ MIRACL big number addition test: FAILED")
+	}
 }

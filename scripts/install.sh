@@ -293,7 +293,7 @@ get_platform_archs() {
     local platform="$1"
     case "$platform" in
         "darwin")
-            echo "arm64 x86_64"
+            echo "arm64"
             ;;
         "linux")
             echo "x86_64 aarch64"
