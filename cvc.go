@@ -11,9 +11,6 @@ package main
 #include "crypto.h"
 */
 import "C"
-import (
-	"fmt"
-)
 
 // CVCHelloWorld calls the C function cvc_hello_world and returns the result as a Go string
 func CVCHelloWorld() string {
@@ -25,20 +22,4 @@ func CVCHelloWorld() string {
 func CVCTestMiraclBigAdd() bool {
 	result := C.cvc_test_miracl_big_add()
 	return int(result) == 1
-}
-
-func main() {
-	fmt.Println("Testing CVC library integration...")
-
-	// Test basic library
-	result := CVCHelloWorld()
-	fmt.Printf("Result from CVC library: %s\n", result)
-
-	// Test MIRACL integration
-	fmt.Println("\nTesting MIRACL integration...")
-	if CVCTestMiraclBigAdd() {
-		fmt.Println("✅ MIRACL big number addition test: PASSED (123 + 456 = 579)")
-	} else {
-		fmt.Println("❌ MIRACL big number addition test: FAILED")
-	}
 }
