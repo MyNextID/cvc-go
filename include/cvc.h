@@ -2,8 +2,8 @@
 // Created by Peter Paravinja on 11. 7. 25.
 //
 
-#ifndef CVC_H
-#define CVC_H
+#ifndef CVC_UMBRELLA_H
+#define CVC_UMBRELLA_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,4 +31,4 @@ extern "C" {
 }
 #endif
 
-#endif // CVC_H
+#endif // CVC_UMBRELLA_H

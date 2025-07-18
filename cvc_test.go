@@ -4,22 +4,16 @@ import (
 	"testing"
 )
 
-func TestCVCHelloWorld(t *testing.T) {
-	result := CVCHelloWorld()
-	if result == "" {
-		t.Fatal("CVCHelloWorld returned empty string")
+func TestGenerateSecretKey(t *testing.T) {
+	config := Config{}
+	secretKey, err := config.GenerateSecretKey()
+	if err != nil {
+		t.Fatalf("GenerateSecretKey returned an error: %v", err)
 	}
-	t.Logf("CVC library result: %s", result)
-}
 
-func TestMiraclBigAdd(t *testing.T) {
-	if !CVCTestMiraclBigAdd() {
-		t.Fatal("MIRACL big number addition test failed (expected 123 + 456 = 579)")
-	}
-	t.Log("✅ MIRACL big number addition test: PASSED (123 + 456 = 579)")
+	t.Logf("CVC library GenerateSecretKey result: %s", secretKey)
 }
 
 func TestLibraryIntegration(t *testing.T) {
-	t.Run("BasicLibraryFunction", TestCVCHelloWorld)
-	t.Run("MiraclIntegration", TestMiraclBigAdd)
+	t.Run("GenerateSecretKey", TestGenerateSecretKey)
 }
