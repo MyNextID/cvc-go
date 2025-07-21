@@ -11,19 +11,19 @@
 extern "C" {
 #endif
 
-    /**
-     * Returns a simple hello world string for testing purposes
-     * @return "Hello World from CVC Library"
-     */
-    const char* cvc_hello_world(void);
+/**
+ * Returns a simple hello world string for testing purposes
+ * @return "Hello World from CVC Library"
+ */
+const char* cvc_hello_world(void);
 
-    /**
-     * Simple MIRACL test function - return 1 if success or 0 if failed
-     */
-    int cvc_test_miracl_big_add(void);
+/**
+ * Simple MIRACL test function - return 1 if success or 0 if failed
+ */
+int cvc_test_miracl_big_add(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //CRYPTO_H
+#endif // CRYPTO_H

@@ -7,7 +7,6 @@
 
 #include "big_256_56.h"
 #include "ecp_NIST256.h"
-#include "fp_NIST256.h"
 #include "core.h"
 
 #ifdef __cplusplus
