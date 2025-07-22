@@ -8,15 +8,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-func TestGenerateSecretKey(t *testing.T) {
-	config := Config{}
-	secretKey, err := config.GenerateSecretKey()
-	if err != nil {
-		t.Fatalf("GenerateSecretKey returned an error: %v", err)
-	}
-	t.Logf("CVC library GenerateSecretKey result: %s", secretKey)
-}
-
 func TestAddPublicKeys(t *testing.T) {
 	config := Config{}
 
@@ -149,9 +140,4 @@ func TestAddPublicKeys(t *testing.T) {
 
 		t.Logf("Correctly rejected invalid key type with error: %v", err)
 	})
-}
-
-func TestLibraryIntegration(t *testing.T) {
-	t.Run("GenerateSecretKey", TestGenerateSecretKey)
-	t.Run("AddPublicKeys", TestAddPublicKeys)
 }

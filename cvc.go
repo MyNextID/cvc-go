@@ -10,6 +10,7 @@ package main
 #include "big_256_56.h"
 #include "nist256_key_material.h"
 #include "ecp_operations.h"
+#include "hash_to_field.h"
 */
 import "C"
 import (
@@ -134,4 +135,128 @@ func (*Config) AddPublicKeys(key1 jwk.Key, key2 jwk.Key) (jwk.Key, error) {
 
 	// Convert to JWK
 	return jwk.FromRaw(newECDSA)
+}
+
+// DeriveSecretKey derives a secret key from a master key using hash-to-field
+func (*Config) DeriveSecretKey(master jwk.Key, context []byte, dst []byte) (jwk.Key, error) {
+	// Input validation
+	if master == nil {
+		return nil, fmt.Errorf("master key cannot be nil")
+	}
+	if len(context) == 0 {
+		return nil, fmt.Errorf("context cannot be empty")
+	}
+	if len(dst) == 0 {
+		return nil, fmt.Errorf("domain separation tag cannot be empty")
+	}
+
+	// Convert master JWK to JSON bytes
+	masterBytes, err := pkg.JWKToJson(master)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert master key to JSON: %w", err)
+	}
+
+	// Validate input sizes to prevent C buffer overflows
+	if len(masterBytes) > 2048 {
+		return nil, fmt.Errorf("master key too large: %d bytes (max 2048)", len(masterBytes))
+	}
+	if len(context) > 2048 {
+		return nil, fmt.Errorf("context too large: %d bytes (max 2048)", len(context))
+	}
+	if len(dst) > 256 {
+		return nil, fmt.Errorf("domain separation tag too large: %d bytes (max 256)", len(dst))
+	}
+	if len(masterBytes)+len(context) > 4096 {
+		return nil, fmt.Errorf("combined master key and context too large: %d bytes (max 4096)", len(masterBytes)+len(context))
+	}
+
+	// Prepare output structure for key material
+	var keyMaterial C.nist256_key_material_t
+
+	// Call C function to derive the secret key
+	result := C.cvc_derive_secret_key_nist256(
+		(*C.uchar)(unsafe.Pointer(&masterBytes[0])),
+		C.int(len(masterBytes)),
+		(*C.uchar)(unsafe.Pointer(&context[0])),
+		C.int(len(context)),
+		(*C.uchar)(unsafe.Pointer(&dst[0])),
+		C.int(len(dst)),
+		&keyMaterial,
+	)
+
+	// Handle C function errors
+	if result != C.CVC_DERIVE_KEY_SUCCESS {
+		switch result {
+		case C.CVC_DERIVE_KEY_ERROR_INVALID_PARAMS:
+			return nil, fmt.Errorf("invalid parameters provided to key derivation")
+		case C.CVC_DERIVE_KEY_ERROR_INPUT_TOO_LARGE:
+			return nil, fmt.Errorf("input data too large for key derivation")
+		case C.CVC_DERIVE_KEY_ERROR_HASH_TO_FIELD_FAILED:
+			return nil, fmt.Errorf("hash-to-field operation failed")
+		case C.CVC_DERIVE_KEY_ERROR_ZERO_SCALAR:
+			return nil, fmt.Errorf("derived key resulted in zero scalar (invalid)")
+		case C.CVC_DERIVE_KEY_ERROR_KEY_EXTRACTION_FAILED:
+			return nil, fmt.Errorf("failed to extract key material")
+		default:
+			return nil, fmt.Errorf("key derivation failed with error code: %d", int(result))
+		}
+	}
+
+	// Convert C key material to Go types
+	const keySize = 32 // MODBYTES_256_56 should be 32 for NIST P-256
+
+	xBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_x_bytes[0]), keySize)
+	yBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_y_bytes[0]), keySize)
+	dBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.private_key_bytes[0]), keySize)
+
+	// Validate that we got valid key material
+	if len(xBytes) != keySize || len(yBytes) != keySize || len(dBytes) != keySize {
+		return nil, fmt.Errorf("invalid key material size returned from C function")
+	}
+
+	// Convert to Go's standard crypto types
+	xBig := new(big.Int).SetBytes(xBytes)
+	yBig := new(big.Int).SetBytes(yBytes)
+	dBig := new(big.Int).SetBytes(dBytes)
+
+	// Validate that we didn't get zero values
+	if xBig.Sign() == 0 && yBig.Sign() == 0 {
+		return nil, fmt.Errorf("derived public key coordinates are zero (invalid)")
+	}
+	if dBig.Sign() == 0 {
+		return nil, fmt.Errorf("derived private key is zero (invalid)")
+	}
+
+	// Create ECDSA key structures
+	curve := elliptic.P256()
+
+	ecdsaPub := &ecdsa.PublicKey{
+		Curve: curve,
+		X:     xBig,
+		Y:     yBig,
+	}
+
+	// Validate that the public key point is on the curve
+	if err = pkg.ValidatePublicKey(curve, xBig, yBig); err != nil {
+		return nil, fmt.Errorf("derived public key validation failed: %w", err)
+	}
+
+	ecdsaPrivate := &ecdsa.PrivateKey{
+		PublicKey: *ecdsaPub,
+		D:         dBig,
+	}
+
+	// Validate private key is in valid range [1, n-1] where n is curve order
+	curveOrder := curve.Params().N
+	if dBig.Cmp(curveOrder) >= 0 {
+		return nil, fmt.Errorf("derived private key is not in valid range")
+	}
+
+	// Convert to JWK
+	derivedKey, err := jwk.FromRaw(ecdsaPrivate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create JWK from derived key: %w", err)
+	}
+
+	return derivedKey, nil
 }

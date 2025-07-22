@@ -1,8 +1,12 @@
 package pkg
 
 import (
+	"crypto/ecdh"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 
@@ -78,6 +82,32 @@ func AddKeyToPayload(payload map[string]interface{}, pubKey jwk.Key) error {
 	// Construct VC payload map
 	payload["cnf"] = map[string]interface{}{
 		"jwk": jwkMap,
+	}
+
+	return nil
+}
+
+func ValidatePublicKey(curve elliptic.Curve, xBig, yBig *big.Int) error {
+	// Convert curve to ecdh curve
+	var ecdhCurve ecdh.Curve
+	switch curve {
+	case elliptic.P256():
+		ecdhCurve = ecdh.P256()
+	case elliptic.P384():
+		ecdhCurve = ecdh.P384()
+	case elliptic.P521():
+		ecdhCurve = ecdh.P521()
+	default:
+		return fmt.Errorf("unsupported curve for ecdh validation")
+	}
+
+	// Marshal the point to uncompressed format
+	pointBytes := elliptic.Marshal(curve, xBig, yBig)
+
+	// Try to create an ecdh.PublicKey - this performs all necessary validation
+	_, err := ecdhCurve.NewPublicKey(pointBytes)
+	if err != nil {
+		return fmt.Errorf("invalid public key point: %w", err)
 	}
 
 	return nil
