@@ -32,6 +32,7 @@ extern "C" {
 #include "nist256_key_material.h" // NIST256 key material extraction
 #include "ecp_operations.h"       // Elliptic curve point operations
 #include "hash_to_field.h"
+#include "add_secret_keys.h"
 
 #ifdef __cplusplus
 }
