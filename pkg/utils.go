@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"os"
-	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -39,30 +37,6 @@ func JsonToJWK(jwkJSON []byte) (jwk.Key, error) {
 		return nil, err
 	}
 	return key, nil
-}
-
-// GetProjectRoot attempts to find the project root by walking up from the current directory
-func GetProjectRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		// Check if go.mod exists here
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
-		}
-
-		// Go one level up
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break // reached root without finding go.mod
-		}
-		dir = parent
-	}
-
-	return "", os.ErrNotExist
 }
 
 func AddKeyToPayload(payload map[string]interface{}, pubKey jwk.Key) error {
