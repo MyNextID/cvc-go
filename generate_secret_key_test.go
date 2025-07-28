@@ -1,4 +1,4 @@
-package main
+package cvc
 
 import (
 	"testing"

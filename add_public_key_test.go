@@ -1,4 +1,4 @@
-package main
+package cvc
 
 import (
 	"crypto/ecdsa"
@@ -24,23 +24,23 @@ func TestAddPublicKeys(t *testing.T) {
 		}
 
 		// Extract public keys from the private keys
-		var privKey1 ecdsa.PrivateKey
-		if err := key1.Raw(&privKey1); err != nil {
+		var privateKey1 ecdsa.PrivateKey
+		if err := key1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract first private key: %v", err)
 		}
 
-		var privKey2 ecdsa.PrivateKey
-		if err := key2.Raw(&privKey2); err != nil {
+		var privateKey2 ecdsa.PrivateKey
+		if err := key2.Raw(&privateKey2); err != nil {
 			t.Fatalf("Failed to extract second private key: %v", err)
 		}
 
 		// Convert to public key JWKs
-		pubKey1, err := jwk.FromRaw(&privKey1.PublicKey)
+		pubKey1, err := jwk.FromRaw(&privateKey1.PublicKey)
 		if err != nil {
 			t.Fatalf("Failed to create first public key JWK: %v", err)
 		}
 
-		pubKey2, err := jwk.FromRaw(&privKey2.PublicKey)
+		pubKey2, err := jwk.FromRaw(&privateKey2.PublicKey)
 		if err != nil {
 			t.Fatalf("Failed to create second public key JWK: %v", err)
 		}
@@ -78,12 +78,12 @@ func TestAddPublicKeys(t *testing.T) {
 			t.Fatalf("Failed to generate test key: %v", err)
 		}
 
-		var privKey1 ecdsa.PrivateKey
-		if err := key1.Raw(&privKey1); err != nil {
+		var privateKey1 ecdsa.PrivateKey
+		if err := key1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract private key: %v", err)
 		}
 
-		pubKey1, err := jwk.FromRaw(&privKey1.PublicKey)
+		pubKey1, err := jwk.FromRaw(&privateKey1.PublicKey)
 		if err != nil {
 			t.Fatalf("Failed to create public key JWK: %v", err)
 		}
@@ -122,12 +122,12 @@ func TestAddPublicKeys(t *testing.T) {
 			t.Fatalf("Failed to create invalid key: %v", err)
 		}
 
-		var privKey1 ecdsa.PrivateKey
-		if err := key1.Raw(&privKey1); err != nil {
+		var privateKey1 ecdsa.PrivateKey
+		if err := key1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract private key: %v", err)
 		}
 
-		pubKey1, err := jwk.FromRaw(&privKey1.PublicKey)
+		pubKey1, err := jwk.FromRaw(&privateKey1.PublicKey)
 		if err != nil {
 			t.Fatalf("Failed to create public key JWK: %v", err)
 		}

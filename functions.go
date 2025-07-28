@@ -1,19 +1,5 @@
-package main
+package cvc
 
-/*
-#cgo CFLAGS: -I./include
-#cgo darwin,arm64 LDFLAGS: -L./lib/darwin/arm64 -lcvc
-#cgo linux,amd64 LDFLAGS: -L./lib/linux/x86_64 -lcvc
-#cgo linux,arm64 LDFLAGS: -L./lib/linux/aarch64 -lcvc
-#cgo windows,amd64 LDFLAGS: -L./lib/windows/x86_64 -lcvc
-
-#include "big_256_56.h"
-#include "nist256_key_material.h"
-#include "ecp_operations.h"
-#include "hash_to_field.h"
-#include "add_secret_keys.h"
-*/
-import "C"
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
@@ -23,21 +9,6 @@ import (
 	"github.com/MyNextID/cvc-go/pkg"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
-
-// MasterKeyStore interface allows users to implement their own key storage
-type MasterKeyStore interface {
-	GetMasterKey() (jwk.Key, error)
-}
-
-// UserData holds user-specific cryptographic material
-type UserData struct {
-	Email    string
-	KeyID    string
-	Salt     []byte
-	WpPubKey jwk.Key
-	VcSecKey jwk.Key
-	VcPubKey jwk.Key
-}
 
 // F0 generates wallet provider public keys for a map of users
 func (c *Config) F0(emailMap map[string]string) (map[string]*UserData, error) {

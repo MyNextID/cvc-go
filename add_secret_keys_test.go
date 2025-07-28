@@ -1,4 +1,4 @@
-package main
+package cvc
 
 import (
 	"crypto/ecdsa"
@@ -31,32 +31,32 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Verify the result is a valid ECDSA private key
-		var resultPrivKey ecdsa.PrivateKey
-		if err := resultKey.Raw(&resultPrivKey); err != nil {
+		var resultPrivateKey ecdsa.PrivateKey
+		if err := resultKey.Raw(&resultPrivateKey); err != nil {
 			t.Fatalf("Failed to extract result private key: %v", err)
 		}
 
 		// Verify it's on the P-256 curve
-		if resultPrivKey.Curve != elliptic.P256() {
+		if resultPrivateKey.Curve != elliptic.P256() {
 			t.Errorf("Result key is not on P-256 curve")
 		}
 
 		// Verify the private key is in valid range [1, n-1]
-		curveOrder := resultPrivKey.Curve.Params().N
-		if resultPrivKey.D.Sign() <= 0 {
+		curveOrder := resultPrivateKey.Curve.Params().N
+		if resultPrivateKey.D.Sign() <= 0 {
 			t.Errorf("Result private key is not positive")
 		}
-		if resultPrivKey.D.Cmp(curveOrder) >= 0 {
+		if resultPrivateKey.D.Cmp(curveOrder) >= 0 {
 			t.Errorf("Result private key is not less than curve order")
 		}
 
 		// Verify the public key point is valid (on the curve)
-		if !resultPrivKey.Curve.IsOnCurve(resultPrivKey.X, resultPrivKey.Y) {
+		if !resultPrivateKey.Curve.IsOnCurve(resultPrivateKey.X, resultPrivateKey.Y) {
 			t.Errorf("Result public key point is not on the curve")
 		}
 
-		t.Logf("Successfully added secret keys. Result private key D: %s", resultPrivKey.D.String())
-		t.Logf("Result public key X: %s, Y: %s", resultPrivKey.X.String(), resultPrivKey.Y.String())
+		t.Logf("Successfully added secret keys. Result private key D: %s", resultPrivateKey.D.String())
+		t.Logf("Result public key X: %s, Y: %s", resultPrivateKey.X.String(), resultPrivateKey.Y.String())
 	})
 
 	t.Run("IdentityProperty", func(t *testing.T) {
@@ -67,8 +67,8 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Extract the original private key
-		var origPrivKey ecdsa.PrivateKey
-		if err := key1.Raw(&origPrivKey); err != nil {
+		var origPrivateKey ecdsa.PrivateKey
+		if err := key1.Raw(&origPrivateKey); err != nil {
 			t.Fatalf("Failed to extract original private key: %v", err)
 		}
 
@@ -79,28 +79,28 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Extract the doubled private key
-		var doubledPrivKey ecdsa.PrivateKey
-		if err := doubledKey.Raw(&doubledPrivKey); err != nil {
+		var doubledPrivateKey ecdsa.PrivateKey
+		if err := doubledKey.Raw(&doubledPrivateKey); err != nil {
 			t.Fatalf("Failed to extract doubled private key: %v", err)
 		}
 
 		// Verify arithmetic: (d + d) mod n = 2*d mod n
-		curveOrder := origPrivKey.Curve.Params().N
-		expected := new(big.Int).Add(origPrivKey.D, origPrivKey.D)
+		curveOrder := origPrivateKey.Curve.Params().N
+		expected := new(big.Int).Add(origPrivateKey.D, origPrivateKey.D)
 		expected.Mod(expected, curveOrder)
 
-		if doubledPrivKey.D.Cmp(expected) != 0 {
+		if doubledPrivateKey.D.Cmp(expected) != 0 {
 			t.Errorf("Key doubling arithmetic is incorrect. Expected: %s, Got: %s",
-				expected.String(), doubledPrivKey.D.String())
+				expected.String(), doubledPrivateKey.D.String())
 		}
 
 		// Verify the result is valid
-		if !doubledPrivKey.Curve.IsOnCurve(doubledPrivKey.X, doubledPrivKey.Y) {
+		if !doubledPrivateKey.Curve.IsOnCurve(doubledPrivateKey.X, doubledPrivateKey.Y) {
 			t.Errorf("Doubled key public point is not on the curve")
 		}
 
 		t.Logf("Identity property test passed. Original D: %s, Doubled D: %s",
-			origPrivKey.D.String(), doubledPrivKey.D.String())
+			origPrivateKey.D.String(), doubledPrivateKey.D.String())
 	})
 
 	t.Run("CommutativeProperty", func(t *testing.T) {
@@ -127,21 +127,21 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Extract the results
-		var privKey1, privKey2 ecdsa.PrivateKey
-		if err := result1.Raw(&privKey1); err != nil {
+		var privateKey1, privateKey2 ecdsa.PrivateKey
+		if err := result1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract first result private key: %v", err)
 		}
-		if err := result2.Raw(&privKey2); err != nil {
+		if err := result2.Raw(&privateKey2); err != nil {
 			t.Fatalf("Failed to extract second result private key: %v", err)
 		}
 
 		// Verify they are identical
-		if privKey1.D.Cmp(privKey2.D) != 0 {
+		if privateKey1.D.Cmp(privateKey2.D) != 0 {
 			t.Errorf("Addition is not commutative for private keys. key1+key2: %s, key2+key1: %s",
-				privKey1.D.String(), privKey2.D.String())
+				privateKey1.D.String(), privateKey2.D.String())
 		}
 
-		if privKey1.X.Cmp(privKey2.X) != 0 || privKey1.Y.Cmp(privKey2.Y) != 0 {
+		if privateKey1.X.Cmp(privateKey2.X) != 0 || privateKey1.Y.Cmp(privateKey2.Y) != 0 {
 			t.Errorf("Addition is not commutative for public keys")
 		}
 
@@ -201,11 +201,11 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Extract private keys
-		var privKey1, privKey2 ecdsa.PrivateKey
-		if err := key1.Raw(&privKey1); err != nil {
+		var privateKey1, privateKey2 ecdsa.PrivateKey
+		if err := key1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract first private key: %v", err)
 		}
-		if err := key2.Raw(&privKey2); err != nil {
+		if err := key2.Raw(&privateKey2); err != nil {
 			t.Fatalf("Failed to extract second private key: %v", err)
 		}
 
@@ -215,30 +215,30 @@ func TestAddSecretKeys(t *testing.T) {
 			t.Fatalf("AddSecretKeys failed: %v", err)
 		}
 
-		var resultPrivKey ecdsa.PrivateKey
-		if err := resultKey.Raw(&resultPrivKey); err != nil {
+		var resultPrivateKey ecdsa.PrivateKey
+		if err := resultKey.Raw(&resultPrivateKey); err != nil {
 			t.Fatalf("Failed to extract result private key: %v", err)
 		}
 
 		// Manually compute expected result: (d1 + d2) mod n
-		curveOrder := privKey1.Curve.Params().N
-		expected := new(big.Int).Add(privKey1.D, privKey2.D)
+		curveOrder := privateKey1.Curve.Params().N
+		expected := new(big.Int).Add(privateKey1.D, privateKey2.D)
 		expected.Mod(expected, curveOrder)
 
 		// Verify the private key arithmetic
-		if resultPrivKey.D.Cmp(expected) != 0 {
+		if resultPrivateKey.D.Cmp(expected) != 0 {
 			t.Errorf("Private key arithmetic is incorrect. Expected: %s, Got: %s",
-				expected.String(), resultPrivKey.D.String())
+				expected.String(), resultPrivateKey.D.String())
 		}
 
 		// Verify that the public key is consistent (resultPublic = expected * G)
-		expectedX, expectedY := privKey1.Curve.ScalarBaseMult(expected.Bytes())
-		if resultPrivKey.X.Cmp(expectedX) != 0 || resultPrivKey.Y.Cmp(expectedY) != 0 {
+		expectedX, expectedY := privateKey1.Curve.ScalarBaseMult(expected.Bytes())
+		if resultPrivateKey.X.Cmp(expectedX) != 0 || resultPrivateKey.Y.Cmp(expectedY) != 0 {
 			t.Errorf("Public key is not consistent with private key arithmetic")
 		}
 
 		t.Logf("Arithmetic verification passed. Expected: %s, Got: %s",
-			expected.String(), resultPrivKey.D.String())
+			expected.String(), resultPrivateKey.D.String())
 	})
 
 	t.Run("MultipleAdditions", func(t *testing.T) {
@@ -263,22 +263,22 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Verify the final result is valid
-		var finalPrivKey ecdsa.PrivateKey
-		if err := result.Raw(&finalPrivKey); err != nil {
+		var finalPrivateKey ecdsa.PrivateKey
+		if err := result.Raw(&finalPrivateKey); err != nil {
 			t.Fatalf("Failed to extract final private key: %v", err)
 		}
 
 		// Verify it's on the curve and in valid range
-		if !finalPrivKey.Curve.IsOnCurve(finalPrivKey.X, finalPrivKey.Y) {
+		if !finalPrivateKey.Curve.IsOnCurve(finalPrivateKey.X, finalPrivateKey.Y) {
 			t.Errorf("Final public key point is not on the curve")
 		}
 
-		curveOrder := finalPrivKey.Curve.Params().N
-		if finalPrivKey.D.Sign() <= 0 || finalPrivKey.D.Cmp(curveOrder) >= 0 {
+		curveOrder := finalPrivateKey.Curve.Params().N
+		if finalPrivateKey.D.Sign() <= 0 || finalPrivateKey.D.Cmp(curveOrder) >= 0 {
 			t.Errorf("Final private key is not in valid range")
 		}
 
-		t.Logf("Multiple additions test passed. Final private key: %s", finalPrivKey.D.String())
+		t.Logf("Multiple additions test passed. Final private key: %s", finalPrivateKey.D.String())
 	})
 
 	t.Run("LargeNumberHandling", func(t *testing.T) {
@@ -305,18 +305,18 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Verify the final result is still valid
-		var finalPrivKey ecdsa.PrivateKey
-		if err := key1.Raw(&finalPrivKey); err != nil {
+		var finalPrivateKey ecdsa.PrivateKey
+		if err := key1.Raw(&finalPrivateKey); err != nil {
 			t.Fatalf("Failed to extract final private key: %v", err)
 		}
 
 		// Verify it's still in valid range after many additions
-		curveOrder := finalPrivKey.Curve.Params().N
-		if finalPrivKey.D.Sign() <= 0 || finalPrivKey.D.Cmp(curveOrder) >= 0 {
+		curveOrder := finalPrivateKey.Curve.Params().N
+		if finalPrivateKey.D.Sign() <= 0 || finalPrivateKey.D.Cmp(curveOrder) >= 0 {
 			t.Errorf("Private key after many additions is not in valid range")
 		}
 
-		if !finalPrivKey.Curve.IsOnCurve(finalPrivKey.X, finalPrivKey.Y) {
+		if !finalPrivateKey.Curve.IsOnCurve(finalPrivateKey.X, finalPrivateKey.Y) {
 			t.Errorf("Public key after many additions is not on the curve")
 		}
 

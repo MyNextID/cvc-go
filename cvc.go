@@ -1,361 +1,208 @@
-package main
+package cvc
 
-/*
-#cgo CFLAGS: -I./include
-#cgo darwin,arm64 LDFLAGS: -L./lib/darwin/arm64 -lcvc
-#cgo linux,amd64 LDFLAGS: -L./lib/linux/x86_64 -lcvc
-#cgo linux,arm64 LDFLAGS: -L./lib/linux/aarch64 -lcvc
-#cgo windows,amd64 LDFLAGS: -L./lib/windows/x86_64 -lcvc
-
-#include "big_256_56.h"
-#include "nist256_key_material.h"
-#include "ecp_operations.h"
-#include "hash_to_field.h"
-#include "add_secret_keys.h"
-*/
-import "C"
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
 	"math/big"
-	"unsafe"
 
+	"github.com/MyNextID/cvc-go/internal"
 	"github.com/MyNextID/cvc-go/pkg"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
+// Config holds the configuration for CVC operations
 type Config struct {
 	MasterKeyStore MasterKeyStore
 	CredentialKey  []byte
 }
 
-// GenerateSecretKey generates a secret key using the CVC library
-func (*Config) GenerateSecretKey() (jwk.Key, error) {
-	// Generate 32 bytes of cryptographically secure random data
+// GenerateSecretKey generates a cryptographically secure NIST P-256 private key
+func (c *Config) GenerateSecretKey() (jwk.Key, error) {
+	// Generate cryptographically secure random seed
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
-		return nil, fmt.Errorf("failed to generate random seed: %w", err)
+		return nil, internal.WrapError(internal.ErrKeyGeneration, "failed to generate random seed")
 	}
 
-	// Generate NIST256 private key using C function
-	var secretKeyBig C.BIG_256_56
-	result := C.nist256_generate_secret_key(
-		(*C.int64_t)(unsafe.Pointer(&secretKeyBig[0])), // Get pointer to first element
-		(*C.uchar)(unsafe.Pointer(&seed[0])),
-		C.int(len(seed)),
-	)
-	if result != 0 {
-		return nil, fmt.Errorf("failed to generate secret key: %v", result)
-	}
-
-	// Extract key material and convert to JWK
-	var keyMaterial C.nist256_key_material_t
-	result = C.nist256_big_to_key_material(
-		(*C.int64_t)(unsafe.Pointer(&secretKeyBig[0])), // Get pointer to first element
-		&keyMaterial,
-	)
-	if result != 0 {
-		return nil, fmt.Errorf("failed to extract key material: %v", result)
-	}
-
-	// Convert C arrays to Go byte slices
-	// Note: MODBYTES_256_56 should be 32 for NIST P-256
-	const keySize = 32
-	xBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_x_bytes[0]), keySize)
-	yBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_y_bytes[0]), keySize)
-	dBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.private_key_bytes[0]), keySize)
-
-	// Convert to Go's standard crypto types and create JWK
-	xBig := new(big.Int).SetBytes(xBytes)
-	yBig := new(big.Int).SetBytes(yBytes)
-	dBig := new(big.Int).SetBytes(dBytes)
-
-	curve := elliptic.P256()
-	ecdsaPub := &ecdsa.PublicKey{
-		Curve: curve,
-		X:     xBig,
-		Y:     yBig,
-	}
-	ecdsaPrivate := &ecdsa.PrivateKey{
-		PublicKey: *ecdsaPub,
-		D:         dBig,
-	}
-
-	return jwk.FromRaw(ecdsaPrivate)
-}
-
-// AddPublicKeys adds two ECDSA public keys using elliptic curve point addition
-func (*Config) AddPublicKeys(key1 jwk.Key, key2 jwk.Key) (jwk.Key, error) {
-	// Extract raw ECDSA public keys
-	var raw1 ecdsa.PublicKey
-	if err := key1.Raw(&raw1); err != nil {
-		return nil, fmt.Errorf("failed to extract first key: %w", err)
-	}
-
-	var raw2 ecdsa.PublicKey
-	if err := key2.Raw(&raw2); err != nil {
-		return nil, fmt.Errorf("failed to extract second key: %w", err)
-	}
-
-	// Validate that both keys are on P-256 curve
-	if raw1.Curve != elliptic.P256() {
-		return nil, fmt.Errorf("first key is not on P-256 curve")
-	}
-	if raw2.Curve != elliptic.P256() {
-		return nil, fmt.Errorf("second key is not on P-256 curve")
-	}
-
-	// Convert to uncompressed point format
-	pkBytes1 := pkg.PublicECDSAToBytes(&raw1)
-	pkBytes2 := pkg.PublicECDSAToBytes(&raw2)
-
-	// Prepare result buffer (65 bytes for uncompressed P-256 point)
-	resultBuffer := make([]byte, 65)
-	var actualLen C.int
-
-	// Call C function to add the public keys
-	result := C.cvc_add_nist256_public_keys(
-		(*C.uchar)(unsafe.Pointer(&pkBytes1[0])),
-		C.int(len(pkBytes1)),
-		(*C.uchar)(unsafe.Pointer(&pkBytes2[0])),
-		C.int(len(pkBytes2)),
-		(*C.uchar)(unsafe.Pointer(&resultBuffer[0])),
-		C.int(len(resultBuffer)),
-		&actualLen,
-	)
-
-	if result != C.CVC_ECP_SUCCESS {
-		return nil, fmt.Errorf("failed to add public keys: error code %d", int(result))
-	}
-
-	// Convert result back to ECDSA public key
-	newECDSA, err := pkg.PublicBytesToECDSA(resultBuffer[:actualLen])
+	// Generate key using internal C bindings
+	keyMaterial, err := internal.GenerateSecretKey(seed)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert result to ECDSA: %w", err)
+		return nil, internal.WrapError(err, "key generation failed")
 	}
 
-	// Convert to JWK
-	return jwk.FromRaw(newECDSA)
-}
-
-// DeriveSecretKey derives a secret key from a master key using hash-to-field
-func (*Config) DeriveSecretKey(master jwk.Key, context []byte, dst []byte) (jwk.Key, error) {
-	// Input validation
-	if master == nil {
-		return nil, fmt.Errorf("master key cannot be nil")
-	}
-	if len(context) == 0 {
-		return nil, fmt.Errorf("context cannot be empty")
-	}
-	if len(dst) == 0 {
-		return nil, fmt.Errorf("domain separation tag cannot be empty")
-	}
-
-	// Convert master JWK to JSON bytes
-	masterBytes, err := pkg.JWKToJson(master)
+	// Convert key material to JWK
+	jwkKey, err := c.keyMaterialToJWK(keyMaterial)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert master key to JSON: %w", err)
+		return nil, internal.WrapError(err, "failed to convert generated key to JWK")
 	}
 
-	// Validate input sizes to prevent C buffer overflows
-	if len(masterBytes) > 2048 {
-		return nil, fmt.Errorf("master key too large: %d bytes (max 2048)", len(masterBytes))
-	}
-	if len(context) > 2048 {
-		return nil, fmt.Errorf("context too large: %d bytes (max 2048)", len(context))
-	}
-	if len(dst) > 256 {
-		return nil, fmt.Errorf("domain separation tag too large: %d bytes (max 256)", len(dst))
-	}
-	if len(masterBytes)+len(context) > 4096 {
-		return nil, fmt.Errorf("combined master key and context too large: %d bytes (max 4096)", len(masterBytes)+len(context))
-	}
-
-	// Prepare output structure for key material
-	var keyMaterial C.nist256_key_material_t
-
-	// Call C function to derive the secret key
-	result := C.cvc_derive_secret_key_nist256(
-		(*C.uchar)(unsafe.Pointer(&masterBytes[0])),
-		C.int(len(masterBytes)),
-		(*C.uchar)(unsafe.Pointer(&context[0])),
-		C.int(len(context)),
-		(*C.uchar)(unsafe.Pointer(&dst[0])),
-		C.int(len(dst)),
-		&keyMaterial,
-	)
-
-	// Handle C function errors
-	if result != C.CVC_DERIVE_KEY_SUCCESS {
-		switch result {
-		case C.CVC_DERIVE_KEY_ERROR_INVALID_PARAMS:
-			return nil, fmt.Errorf("invalid parameters provided to key derivation")
-		case C.CVC_DERIVE_KEY_ERROR_INPUT_TOO_LARGE:
-			return nil, fmt.Errorf("input data too large for key derivation")
-		case C.CVC_DERIVE_KEY_ERROR_HASH_TO_FIELD_FAILED:
-			return nil, fmt.Errorf("hash-to-field operation failed")
-		case C.CVC_DERIVE_KEY_ERROR_ZERO_SCALAR:
-			return nil, fmt.Errorf("derived key resulted in zero scalar (invalid)")
-		case C.CVC_DERIVE_KEY_ERROR_KEY_EXTRACTION_FAILED:
-			return nil, fmt.Errorf("failed to extract key material")
-		default:
-			return nil, fmt.Errorf("key derivation failed with error code: %d", int(result))
-		}
-	}
-
-	// Convert C key material to Go types
-	const keySize = 32 // MODBYTES_256_56 should be 32 for NIST P-256
-
-	xBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_x_bytes[0]), keySize)
-	yBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_y_bytes[0]), keySize)
-	dBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.private_key_bytes[0]), keySize)
-
-	// Validate that we got valid key material
-	if len(xBytes) != keySize || len(yBytes) != keySize || len(dBytes) != keySize {
-		return nil, fmt.Errorf("invalid key material size returned from C function")
-	}
-
-	// Convert to Go's standard crypto types
-	xBig := new(big.Int).SetBytes(xBytes)
-	yBig := new(big.Int).SetBytes(yBytes)
-	dBig := new(big.Int).SetBytes(dBytes)
-
-	// Validate that we didn't get zero values
-	if xBig.Sign() == 0 && yBig.Sign() == 0 {
-		return nil, fmt.Errorf("derived public key coordinates are zero (invalid)")
-	}
-	if dBig.Sign() == 0 {
-		return nil, fmt.Errorf("derived private key is zero (invalid)")
-	}
-
-	// Create ECDSA key structures
-	curve := elliptic.P256()
-
-	ecdsaPub := &ecdsa.PublicKey{
-		Curve: curve,
-		X:     xBig,
-		Y:     yBig,
-	}
-
-	// Validate that the public key point is on the curve
-	if err = pkg.ValidatePublicKey(curve, xBig, yBig); err != nil {
-		return nil, fmt.Errorf("derived public key validation failed: %w", err)
-	}
-
-	ecdsaPrivate := &ecdsa.PrivateKey{
-		PublicKey: *ecdsaPub,
-		D:         dBig,
-	}
-
-	// Validate private key is in valid range [1, n-1] where n is curve order
-	curveOrder := curve.Params().N
-	if dBig.Cmp(curveOrder) >= 0 {
-		return nil, fmt.Errorf("derived private key is not in valid range")
-	}
-
-	// Convert to JWK
-	derivedKey, err := jwk.FromRaw(ecdsaPrivate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create JWK from derived key: %w", err)
-	}
-
-	return derivedKey, nil
+	return jwkKey, nil
 }
 
 // AddSecretKeys adds two ECDSA private keys using scalar addition modulo curve order
-func (*Config) AddSecretKeys(key1 jwk.Key, key2 jwk.Key) (jwk.Key, error) {
+func (c *Config) AddSecretKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 	// Input validation
 	if key1 == nil {
-		return nil, fmt.Errorf("first key cannot be nil")
+		return nil, internal.WrapError(internal.ErrInvalidKey, "first key cannot be nil")
 	}
 	if key2 == nil {
-		return nil, fmt.Errorf("second key cannot be nil")
+		return nil, internal.WrapError(internal.ErrInvalidKey, "second key cannot be nil")
 	}
 
-	// Extract raw ECDSA private keys
-	var privKey1, privKey2 ecdsa.PrivateKey
-	if err := key1.Raw(&privKey1); err != nil {
-		return nil, fmt.Errorf("failed to extract first private key: %w", err)
-	}
-	if err := key2.Raw(&privKey2); err != nil {
-		return nil, fmt.Errorf("failed to extract second private key: %w", err)
+	// Extract private keys from JWKs
+	privateKey1, err := c.extractPrivateKey(key1, "first key")
+	if err != nil {
+		return nil, err
 	}
 
-	// Validate that both keys are on P-256 curve
-	if privKey1.Curve != elliptic.P256() {
-		return nil, fmt.Errorf("first key is not on P-256 curve")
-	}
-	if privKey2.Curve != elliptic.P256() {
-		return nil, fmt.Errorf("second key is not on P-256 curve")
+	privateKey2, err := c.extractPrivateKey(key2, "second key")
+	if err != nil {
+		return nil, err
 	}
 
-	// Convert private key scalars to 32-byte arrays (big-endian)
-	const keySize = 32 // MODBYTES_256_56 for NIST P-256
+	// Convert private key scalars to byte arrays
+	key1Bytes := c.privateKeyToBytes(privateKey1.D)
+	key2Bytes := c.privateKeyToBytes(privateKey2.D)
 
-	// Ensure we have exactly 32 bytes for each key (left-pad with zeros if necessary)
-	key1Bytes := make([]byte, keySize)
-	key2Bytes := make([]byte, keySize)
-
-	d1Bytes := privKey1.D.Bytes()
-	d2Bytes := privKey2.D.Bytes()
-
-	// Copy to right-aligned position (left-pad with zeros)
-	copy(key1Bytes[keySize-len(d1Bytes):], d1Bytes)
-	copy(key2Bytes[keySize-len(d2Bytes):], d2Bytes)
-
-	// Prepare output structure for key material
-	var keyMaterial C.nist256_key_material_t
-
-	// Call C function to add the secret keys
-	result := C.cvc_add_nist256_secret_keys(
-		(*C.uchar)(unsafe.Pointer(&key1Bytes[0])),
-		C.int(len(key1Bytes)),
-		(*C.uchar)(unsafe.Pointer(&key2Bytes[0])),
-		C.int(len(key2Bytes)),
-		&keyMaterial,
-	)
-
-	// Handle C function errors
-	if result != C.CVC_ADD_SECRET_KEYS_SUCCESS {
-		switch result {
-		case C.CVC_ADD_SECRET_KEYS_ERROR_INVALID_PARAMS:
-			return nil, fmt.Errorf("invalid parameters provided to secret key addition")
-		case C.CVC_ADD_SECRET_KEYS_ERROR_INVALID_KEY1:
-			return nil, fmt.Errorf("first key is invalid (zero or >= curve order)")
-		case C.CVC_ADD_SECRET_KEYS_ERROR_INVALID_KEY2:
-			return nil, fmt.Errorf("second key is invalid (zero or >= curve order)")
-		case C.CVC_ADD_SECRET_KEYS_ERROR_RESULT_ZERO:
-			return nil, fmt.Errorf("result scalar is zero (invalid private key)")
-		case C.CVC_ADD_SECRET_KEYS_ERROR_KEY_EXTRACTION_FAILED:
-			return nil, fmt.Errorf("failed to extract complete key material")
-		default:
-			return nil, fmt.Errorf("secret key addition failed with error code: %d", int(result))
-		}
+	// Perform scalar addition using internal C bindings
+	resultKeyMaterial, err := internal.AddSecretKeys(key1Bytes, key2Bytes)
+	if err != nil {
+		return nil, internal.WrapError(err, "secret key addition failed")
 	}
 
-	// Convert C key material to Go types
-	xBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_x_bytes[0]), keySize)
-	yBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.public_key_y_bytes[0]), keySize)
-	dBytes := C.GoBytes(unsafe.Pointer(&keyMaterial.private_key_bytes[0]), keySize)
-
-	// Validate that we got valid key material
-	if len(xBytes) != keySize || len(yBytes) != keySize || len(dBytes) != keySize {
-		return nil, fmt.Errorf("invalid key material size returned from C function")
+	// Convert result to JWK
+	resultJWK, err := c.keyMaterialToJWK(resultKeyMaterial)
+	if err != nil {
+		return nil, internal.WrapError(err, "failed to convert result to JWK")
 	}
 
-	// Convert to Go's standard crypto types
+	return resultJWK, nil
+}
+
+// AddPublicKeys adds two ECDSA public keys using elliptic curve point addition
+func (c *Config) AddPublicKeys(key1, key2 jwk.Key) (jwk.Key, error) {
+	// Input validation
+	if key1 == nil {
+		return nil, internal.WrapError(internal.ErrInvalidKey, "first key cannot be nil")
+	}
+	if key2 == nil {
+		return nil, internal.WrapError(internal.ErrInvalidKey, "second key cannot be nil")
+	}
+
+	// Extract public keys from JWKs
+	pubKey1, err := c.extractPublicKey(key1, "first key")
+	if err != nil {
+		return nil, err
+	}
+
+	pubKey2, err := c.extractPublicKey(key2, "second key")
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to uncompressed point format
+	pubKey1Bytes := pkg.PublicECDSAToBytes(pubKey1)
+	pubKey2Bytes := pkg.PublicECDSAToBytes(pubKey2)
+
+	// Perform point addition using internal C bindings
+	resultBytes, err := internal.AddPublicKeys(pubKey1Bytes, pubKey2Bytes)
+	if err != nil {
+		return nil, internal.WrapError(err, "public key addition failed")
+	}
+
+	// Convert result back to ECDSA public key
+	resultECDSA, err := pkg.PublicBytesToECDSA(resultBytes)
+	if err != nil {
+		return nil, internal.WrapError(internal.ErrResultConversion, "failed to convert result to ECDSA public key")
+	}
+
+	// Validate the resulting public key
+	if err := c.validatePublicKey(resultECDSA); err != nil {
+		return nil, internal.WrapError(err, "result public key validation failed")
+	}
+
+	// Convert to JWK
+	resultJWK, err := jwk.FromRaw(resultECDSA)
+	if err != nil {
+		return nil, internal.WrapError(internal.ErrJWKCreation, "failed to create JWK from result public key")
+	}
+
+	return resultJWK, nil
+}
+
+// DeriveSecretKey derives a secret key from master key material using hash-to-field
+func (c *Config) DeriveSecretKey(master jwk.Key, context, dst []byte) (jwk.Key, error) {
+	// Input validation
+	if master == nil {
+		return nil, internal.WrapError(internal.ErrInvalidKey, "master key cannot be nil")
+	}
+
+	if err := internal.ValidateNonEmpty(context, "context"); err != nil {
+		return nil, err
+	}
+
+	if err := internal.ValidateNonEmpty(dst, "domain separation tag"); err != nil {
+		return nil, err
+	}
+
+	// Convert master JWK to JSON bytes for hashing
+	masterBytes, err := pkg.JWKToJson(master)
+	if err != nil {
+		return nil, internal.WrapError(internal.ErrJWKExtraction, "failed to convert master key to JSON")
+	}
+
+	// Perform additional size validations
+	if err := internal.ValidateInputSize(masterBytes, 2048, "master key JSON"); err != nil {
+		return nil, err
+	}
+
+	if err := internal.ValidateInputSize(context, 2048, "context"); err != nil {
+		return nil, err
+	}
+
+	if err := internal.ValidateInputSize(dst, 256, "domain separation tag"); err != nil {
+		return nil, err
+	}
+
+	// Derive key using internal C bindings
+	derivedKeyMaterial, err := internal.DeriveSecretKey(masterBytes, context, dst)
+	if err != nil {
+		return nil, internal.WrapError(err, "key derivation failed")
+	}
+
+	// Convert derived key material to JWK
+	derivedJWK, err := c.keyMaterialToJWK(derivedKeyMaterial)
+	if err != nil {
+		return nil, internal.WrapError(err, "failed to convert derived key to JWK")
+	}
+
+	// Additional validation of derived key
+	if err := c.validateDerivedKey(derivedJWK); err != nil {
+		return nil, internal.WrapError(err, "derived key validation failed")
+	}
+
+	return derivedJWK, nil
+}
+
+// keyMaterialToJWK converts internal key material to a JWK private key
+func (c *Config) keyMaterialToJWK(keyMaterial internal.KeyMaterial) (jwk.Key, error) {
+	// Get key material as byte slices
+	dBytes, xBytes, yBytes := keyMaterial.GetKeyMaterialBytes()
+
+	// Convert to big.Int
+	dBig := new(big.Int).SetBytes(dBytes)
 	xBig := new(big.Int).SetBytes(xBytes)
 	yBig := new(big.Int).SetBytes(yBytes)
-	dBig := new(big.Int).SetBytes(dBytes)
 
 	// Validate that we didn't get zero values
-	if xBig.Sign() == 0 && yBig.Sign() == 0 {
-		return nil, fmt.Errorf("result public key coordinates are zero (invalid)")
-	}
 	if dBig.Sign() == 0 {
-		return nil, fmt.Errorf("result private key is zero (invalid)")
+		return nil, internal.WrapError(internal.ErrZeroScalar, "private key scalar is zero")
+	}
+
+	if xBig.Sign() == 0 && yBig.Sign() == 0 {
+		return nil, internal.WrapError(internal.ErrKeyAtInfinity, "public key coordinates are both zero")
 	}
 
 	// Create ECDSA key structures
@@ -368,7 +215,7 @@ func (*Config) AddSecretKeys(key1 jwk.Key, key2 jwk.Key) (jwk.Key, error) {
 
 	// Validate that the public key point is on the curve
 	if err := pkg.ValidatePublicKey(curve, xBig, yBig); err != nil {
-		return nil, fmt.Errorf("result public key validation failed: %w", err)
+		return nil, internal.WrapError(internal.ErrKeyNotOnCurve, "public key point validation failed")
 	}
 
 	ecdsaPrivate := &ecdsa.PrivateKey{
@@ -376,17 +223,179 @@ func (*Config) AddSecretKeys(key1 jwk.Key, key2 jwk.Key) (jwk.Key, error) {
 		D:         dBig,
 	}
 
-	// Validate private key is in valid range [1, n-1] where n is curve order
+	// Validate private key is in valid range [1, n-1]
 	curveOrder := curve.Params().N
 	if dBig.Cmp(curveOrder) >= 0 {
-		return nil, fmt.Errorf("result private key is not in valid range")
+		return nil, internal.WrapError(internal.ErrKeyOutOfRange, "private key exceeds curve order")
 	}
 
 	// Convert to JWK
-	resultKey, err := jwk.FromRaw(ecdsaPrivate)
+	jwkKey, err := jwk.FromRaw(ecdsaPrivate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create JWK from result key: %w", err)
+		return nil, internal.WrapError(internal.ErrJWKCreation, "failed to create JWK from ECDSA private key")
 	}
 
-	return resultKey, nil
+	return jwkKey, nil
+}
+
+// extractPrivateKey extracts an ECDSA private key from a JWK
+func (c *Config) extractPrivateKey(key jwk.Key, keyName string) (*ecdsa.PrivateKey, error) {
+	var privateKey ecdsa.PrivateKey
+	if err := key.Raw(&privateKey); err != nil {
+		return nil, internal.WrapError(internal.ErrJWKExtraction, fmt.Sprintf("failed to extract %s as ECDSA private key", keyName))
+	}
+
+	// Validate curve
+	if privateKey.Curve != elliptic.P256() {
+		return nil, internal.WrapError(internal.ErrCurveUnsupported, fmt.Sprintf("%s is not on P-256 curve", keyName))
+	}
+
+	// Validate private key range
+	if privateKey.D.Sign() <= 0 {
+		return nil, internal.WrapError(internal.ErrZeroScalar, fmt.Sprintf("%s private key is not positive", keyName))
+	}
+
+	curveOrder := privateKey.Curve.Params().N
+	if privateKey.D.Cmp(curveOrder) >= 0 {
+		return nil, internal.WrapError(internal.ErrKeyOutOfRange, fmt.Sprintf("%s private key exceeds curve order", keyName))
+	}
+
+	return &privateKey, nil
+}
+
+// extractPublicKey extracts an ECDSA public key from a JWK
+func (c *Config) extractPublicKey(key jwk.Key, keyName string) (*ecdsa.PublicKey, error) {
+	// Try to extract as public key first
+	var pubKey ecdsa.PublicKey
+	if err := key.Raw(&pubKey); err != nil {
+		// If that fails, try to extract as private key and get the public part
+		var privateKey ecdsa.PrivateKey
+		if err := key.Raw(&privateKey); err != nil {
+			return nil, internal.WrapError(internal.ErrJWKExtraction, fmt.Sprintf("failed to extract %s as ECDSA key", keyName))
+		}
+		pubKey = privateKey.PublicKey
+	}
+
+	// Validate curve
+	if pubKey.Curve != elliptic.P256() {
+		return nil, internal.WrapError(internal.ErrCurveUnsupported, fmt.Sprintf("%s is not on P-256 curve", keyName))
+	}
+
+	// Validate public key
+	if err := c.validatePublicKey(&pubKey); err != nil {
+		return nil, internal.WrapError(err, fmt.Sprintf("%s validation failed", keyName))
+	}
+
+	return &pubKey, nil
+}
+
+// validatePublicKey validates an ECDSA public key
+func (c *Config) validatePublicKey(pubKey *ecdsa.PublicKey) error {
+	if pubKey.X == nil || pubKey.Y == nil {
+		return internal.WrapError(internal.ErrInvalidKey, "public key coordinates are nil")
+	}
+
+	if pubKey.X.Sign() == 0 && pubKey.Y.Sign() == 0 {
+		return internal.WrapError(internal.ErrKeyAtInfinity, "public key is at infinity")
+	}
+
+	// Use pkg validation function
+	if err := pkg.ValidatePublicKey(pubKey.Curve, pubKey.X, pubKey.Y); err != nil {
+		return internal.WrapError(internal.ErrKeyNotOnCurve, "public key point is not on curve")
+	}
+
+	return nil
+}
+
+// validateDerivedKey performs additional validation on a derived key
+func (c *Config) validateDerivedKey(key jwk.Key) error {
+	// Extract and validate the derived private key
+	_, err := c.extractPrivateKey(key, "derived key")
+	if err != nil {
+		return err
+	}
+
+	// Additional checks could be added here if needed
+	return nil
+}
+
+// privateKeyToBytes converts a big.Int private key to a 32-byte array (big-endian)
+func (c *Config) privateKeyToBytes(d *big.Int) []byte {
+	keyBytes := make([]byte, internal.KeySize)
+	dBytes := d.Bytes()
+
+	// Copy to right-aligned position (left-pad with zeros if necessary)
+	copy(keyBytes[internal.KeySize-len(dBytes):], dBytes)
+
+	return keyBytes
+}
+
+// Additional utility methods for the Config struct
+
+// ValidateConfig validates the configuration before use
+func (c *Config) ValidateConfig() error {
+	if c.MasterKeyStore == nil {
+		return internal.WrapError(internal.ErrMasterKeyNotSet, "master key store is not configured")
+	}
+
+	if len(c.CredentialKey) == 0 {
+		return internal.WrapError(internal.ErrInvalidParameters, "credential key is not set")
+	}
+
+	// Test that we can retrieve the master key
+	_, err := c.MasterKeyStore.GetMasterKey()
+	if err != nil {
+		return internal.WrapError(err, "failed to retrieve master key from store")
+	}
+
+	return nil
+}
+
+// GetMasterKey is a convenience method to get the master key
+func (c *Config) GetMasterKey() (jwk.Key, error) {
+	if c.MasterKeyStore == nil {
+		return nil, internal.WrapError(internal.ErrMasterKeyNotSet, "master key store is not configured")
+	}
+
+	masterKey, err := c.MasterKeyStore.GetMasterKey()
+	if err != nil {
+		return nil, internal.WrapError(err, "failed to retrieve master key")
+	}
+
+	return masterKey, nil
+}
+
+// IsKeyValid checks if a JWK represents a valid NIST P-256 key
+func (c *Config) IsKeyValid(key jwk.Key) error {
+	if key == nil {
+		return internal.WrapError(internal.ErrInvalidKey, "key is nil")
+	}
+
+	// Try to extract as private key first
+	var privateKey ecdsa.PrivateKey
+	if err := key.Raw(&privateKey); err != nil {
+		// If that fails, try as public key
+		var pubKey ecdsa.PublicKey
+		if err := key.Raw(&pubKey); err != nil {
+			return internal.WrapError(internal.ErrKeyTypeUnsupported, "key is not an ECDSA key")
+		}
+		return c.validatePublicKey(&pubKey)
+	}
+
+	// Validate both private and public parts
+	if err := c.validatePublicKey(&privateKey.PublicKey); err != nil {
+		return err
+	}
+
+	// Validate private key
+	if privateKey.D.Sign() <= 0 {
+		return internal.WrapError(internal.ErrZeroScalar, "private key is not positive")
+	}
+
+	curveOrder := privateKey.Curve.Params().N
+	if privateKey.D.Cmp(curveOrder) >= 0 {
+		return internal.WrapError(internal.ErrKeyOutOfRange, "private key exceeds curve order")
+	}
+
+	return nil
 }

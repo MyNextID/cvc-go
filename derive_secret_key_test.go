@@ -1,4 +1,4 @@
-package main
+package cvc
 
 import (
 	"crypto/ecdsa"
@@ -30,34 +30,34 @@ func TestDeriveSecretKey(t *testing.T) {
 		}
 
 		// Verify the derived key is valid
-		var privKey ecdsa.PrivateKey
-		if err := derivedKey.Raw(&privKey); err != nil {
+		var privateKey ecdsa.PrivateKey
+		if err := derivedKey.Raw(&privateKey); err != nil {
 			t.Fatalf("Failed to extract derived private key: %v", err)
 		}
 
 		// Verify it's on the P-256 curve
-		if privKey.Curve != elliptic.P256() {
+		if privateKey.Curve != elliptic.P256() {
 			t.Errorf("Derived key is not on P-256 curve")
 		}
 
 		// Verify the public key point is valid (on the curve)
-		if err = pkg.ValidatePublicKey(privKey.Curve, privKey.X, privKey.Y); err != nil {
+		if err = pkg.ValidatePublicKey(privateKey.Curve, privateKey.X, privateKey.Y); err != nil {
 			t.Errorf("Derived public key point is not on the curve")
 		}
 
 		// Verify private key is not zero
-		if privKey.D.Sign() == 0 {
+		if privateKey.D.Sign() == 0 {
 			t.Errorf("Derived private key is zero")
 		}
 
 		// Verify private key is in valid range [1, n-1]
-		curveOrder := privKey.Curve.Params().N
-		if privKey.D.Cmp(curveOrder) >= 0 {
+		curveOrder := privateKey.Curve.Params().N
+		if privateKey.D.Cmp(curveOrder) >= 0 {
 			t.Errorf("Derived private key is not in valid range")
 		}
 
-		t.Logf("Successfully derived key. Private key D: %s", privKey.D.String())
-		t.Logf("Public key X: %s, Y: %s", privKey.X.String(), privKey.Y.String())
+		t.Logf("Successfully derived key. Private key D: %s", privateKey.D.String())
+		t.Logf("Public key X: %s, Y: %s", privateKey.X.String(), privateKey.Y.String())
 	})
 
 	t.Run("Deterministic", func(t *testing.T) {
@@ -82,19 +82,19 @@ func TestDeriveSecretKey(t *testing.T) {
 		}
 
 		// Extract private keys
-		var privKey1, privKey2 ecdsa.PrivateKey
-		if err := derivedKey1.Raw(&privKey1); err != nil {
+		var privateKey1, privateKey2 ecdsa.PrivateKey
+		if err := derivedKey1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract first derived private key: %v", err)
 		}
-		if err := derivedKey2.Raw(&privKey2); err != nil {
+		if err := derivedKey2.Raw(&privateKey2); err != nil {
 			t.Fatalf("Failed to extract second derived private key: %v", err)
 		}
 
 		// Verify they are identical
-		if privKey1.D.Cmp(privKey2.D) != 0 {
+		if privateKey1.D.Cmp(privateKey2.D) != 0 {
 			t.Errorf("Derived private keys are not identical")
 		}
-		if privKey1.X.Cmp(privKey2.X) != 0 || privKey1.Y.Cmp(privKey2.Y) != 0 {
+		if privateKey1.X.Cmp(privateKey2.X) != 0 || privateKey1.Y.Cmp(privateKey2.Y) != 0 {
 			t.Errorf("Derived public keys are not identical")
 		}
 
@@ -124,19 +124,19 @@ func TestDeriveSecretKey(t *testing.T) {
 		}
 
 		// Extract private keys
-		var privKey1, privKey2 ecdsa.PrivateKey
-		if err := derivedKey1.Raw(&privKey1); err != nil {
+		var privateKey1, privateKey2 ecdsa.PrivateKey
+		if err := derivedKey1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract first derived private key: %v", err)
 		}
-		if err := derivedKey2.Raw(&privKey2); err != nil {
+		if err := derivedKey2.Raw(&privateKey2); err != nil {
 			t.Fatalf("Failed to extract second derived private key: %v", err)
 		}
 
 		// Verify they are different
-		if privKey1.D.Cmp(privKey2.D) == 0 {
+		if privateKey1.D.Cmp(privateKey2.D) == 0 {
 			t.Errorf("Derived private keys should be different for different contexts")
 		}
-		if privKey1.X.Cmp(privKey2.X) == 0 && privKey1.Y.Cmp(privKey2.Y) == 0 {
+		if privateKey1.X.Cmp(privateKey2.X) == 0 && privateKey1.Y.Cmp(privateKey2.Y) == 0 {
 			t.Errorf("Derived public keys should be different for different contexts")
 		}
 
@@ -166,16 +166,16 @@ func TestDeriveSecretKey(t *testing.T) {
 		}
 
 		// Extract private keys
-		var privKey1, privKey2 ecdsa.PrivateKey
-		if err := derivedKey1.Raw(&privKey1); err != nil {
+		var privateKey1, privateKey2 ecdsa.PrivateKey
+		if err := derivedKey1.Raw(&privateKey1); err != nil {
 			t.Fatalf("Failed to extract first derived private key: %v", err)
 		}
-		if err := derivedKey2.Raw(&privKey2); err != nil {
+		if err := derivedKey2.Raw(&privateKey2); err != nil {
 			t.Fatalf("Failed to extract second derived private key: %v", err)
 		}
 
 		// Verify they are different
-		if privKey1.D.Cmp(privKey2.D) == 0 {
+		if privateKey1.D.Cmp(privateKey2.D) == 0 {
 			t.Errorf("Derived private keys should be different for different DSTs")
 		}
 
@@ -259,12 +259,12 @@ func TestDeriveSecretKey(t *testing.T) {
 		}
 
 		// Verify the result is valid
-		var privKey ecdsa.PrivateKey
-		if err := derivedKey.Raw(&privKey); err != nil {
+		var privateKey ecdsa.PrivateKey
+		if err := derivedKey.Raw(&privateKey); err != nil {
 			t.Fatalf("Failed to extract derived private key: %v", err)
 		}
 
-		if !privKey.Curve.IsOnCurve(privKey.X, privKey.Y) {
+		if !privateKey.Curve.IsOnCurve(privateKey.X, privateKey.Y) {
 			t.Errorf("Derived public key point is not on the curve")
 		}
 
