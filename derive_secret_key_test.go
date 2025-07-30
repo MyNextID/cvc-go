@@ -10,11 +10,11 @@ import (
 )
 
 func TestDeriveSecretKey(t *testing.T) {
-	config := Config{}
+	// config := Config{}
 
 	t.Run("ValidDerivation", func(t *testing.T) {
 		// Generate a master key
-		masterKey, err := config.GenerateSecretKey()
+		masterKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate master key: %v", err)
 		}
@@ -24,7 +24,7 @@ func TestDeriveSecretKey(t *testing.T) {
 		dst := []byte("CVC-TEST-DST-v1.0")
 
 		// Derive a secret key
-		derivedKey, err := config.DeriveSecretKey(masterKey, context, dst)
+		derivedKey, err := DeriveSecretKey(masterKey, context, dst)
 		if err != nil {
 			t.Fatalf("DeriveSecretKey failed: %v", err)
 		}
@@ -62,7 +62,7 @@ func TestDeriveSecretKey(t *testing.T) {
 
 	t.Run("Deterministic", func(t *testing.T) {
 		// Generate a master key
-		masterKey, err := config.GenerateSecretKey()
+		masterKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate master key: %v", err)
 		}
@@ -71,12 +71,12 @@ func TestDeriveSecretKey(t *testing.T) {
 		dst := []byte("CVC-DETERMINISTIC-DST-v1.0")
 
 		// Derive the same key twice
-		derivedKey1, err := config.DeriveSecretKey(masterKey, context, dst)
+		derivedKey1, err := DeriveSecretKey(masterKey, context, dst)
 		if err != nil {
 			t.Fatalf("First DeriveSecretKey failed: %v", err)
 		}
 
-		derivedKey2, err := config.DeriveSecretKey(masterKey, context, dst)
+		derivedKey2, err := DeriveSecretKey(masterKey, context, dst)
 		if err != nil {
 			t.Fatalf("Second DeriveSecretKey failed: %v", err)
 		}
@@ -103,7 +103,7 @@ func TestDeriveSecretKey(t *testing.T) {
 
 	t.Run("DifferentContexts", func(t *testing.T) {
 		// Generate a master key
-		masterKey, err := config.GenerateSecretKey()
+		masterKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate master key: %v", err)
 		}
@@ -113,12 +113,12 @@ func TestDeriveSecretKey(t *testing.T) {
 		context2 := []byte("context-2")
 
 		// Derive keys with different contexts
-		derivedKey1, err := config.DeriveSecretKey(masterKey, context1, dst)
+		derivedKey1, err := DeriveSecretKey(masterKey, context1, dst)
 		if err != nil {
 			t.Fatalf("First DeriveSecretKey failed: %v", err)
 		}
 
-		derivedKey2, err := config.DeriveSecretKey(masterKey, context2, dst)
+		derivedKey2, err := DeriveSecretKey(masterKey, context2, dst)
 		if err != nil {
 			t.Fatalf("Second DeriveSecretKey failed: %v", err)
 		}
@@ -145,7 +145,7 @@ func TestDeriveSecretKey(t *testing.T) {
 
 	t.Run("DifferentDSTs", func(t *testing.T) {
 		// Generate a master key
-		masterKey, err := config.GenerateSecretKey()
+		masterKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate master key: %v", err)
 		}
@@ -155,12 +155,12 @@ func TestDeriveSecretKey(t *testing.T) {
 		dst2 := []byte("CVC-DST-2-v1.0")
 
 		// Derive keys with different DSTs
-		derivedKey1, err := config.DeriveSecretKey(masterKey, context, dst1)
+		derivedKey1, err := DeriveSecretKey(masterKey, context, dst1)
 		if err != nil {
 			t.Fatalf("First DeriveSecretKey failed: %v", err)
 		}
 
-		derivedKey2, err := config.DeriveSecretKey(masterKey, context, dst2)
+		derivedKey2, err := DeriveSecretKey(masterKey, context, dst2)
 		if err != nil {
 			t.Fatalf("Second DeriveSecretKey failed: %v", err)
 		}
@@ -183,7 +183,7 @@ func TestDeriveSecretKey(t *testing.T) {
 	})
 
 	t.Run("ErrorCases", func(t *testing.T) {
-		masterKey, err := config.GenerateSecretKey()
+		masterKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate master key: %v", err)
 		}
@@ -192,21 +192,21 @@ func TestDeriveSecretKey(t *testing.T) {
 		validDST := []byte("CVC-ERROR-TEST-DST-v1.0")
 
 		// Test nil master key
-		_, err = config.DeriveSecretKey(nil, validContext, validDST)
+		_, err = DeriveSecretKey(nil, validContext, validDST)
 		if err == nil {
 			t.Errorf("Expected error for nil master key, but got none")
 		}
 		t.Logf("Correctly rejected nil master key: %v", err)
 
 		// Test empty context
-		_, err = config.DeriveSecretKey(masterKey, []byte{}, validDST)
+		_, err = DeriveSecretKey(masterKey, []byte{}, validDST)
 		if err == nil {
 			t.Errorf("Expected error for empty context, but got none")
 		}
 		t.Logf("Correctly rejected empty context: %v", err)
 
 		// Test empty DST
-		_, err = config.DeriveSecretKey(masterKey, validContext, []byte{})
+		_, err = DeriveSecretKey(masterKey, validContext, []byte{})
 		if err == nil {
 			t.Errorf("Expected error for empty DST, but got none")
 		}
@@ -217,7 +217,7 @@ func TestDeriveSecretKey(t *testing.T) {
 		for i := range oversizedContext {
 			oversizedContext[i] = byte(i % 256)
 		}
-		_, err = config.DeriveSecretKey(masterKey, oversizedContext, validDST)
+		_, err = DeriveSecretKey(masterKey, oversizedContext, validDST)
 		if err == nil {
 			t.Errorf("Expected error for oversized context, but got none")
 		}
@@ -228,7 +228,7 @@ func TestDeriveSecretKey(t *testing.T) {
 		for i := range oversizedDST {
 			oversizedDST[i] = byte(i % 256)
 		}
-		_, err = config.DeriveSecretKey(masterKey, validContext, oversizedDST)
+		_, err = DeriveSecretKey(masterKey, validContext, oversizedDST)
 		if err == nil {
 			t.Errorf("Expected error for oversized DST, but got none")
 		}
@@ -237,7 +237,7 @@ func TestDeriveSecretKey(t *testing.T) {
 
 	t.Run("LargeInputs", func(t *testing.T) {
 		// Test with maximum allowed sizes
-		masterKey, err := config.GenerateSecretKey()
+		masterKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate master key: %v", err)
 		}
@@ -253,7 +253,7 @@ func TestDeriveSecretKey(t *testing.T) {
 			largeDST[i] = byte(i % 256)
 		}
 
-		derivedKey, err := config.DeriveSecretKey(masterKey, largeContext, largeDST)
+		derivedKey, err := DeriveSecretKey(masterKey, largeContext, largeDST)
 		if err != nil {
 			t.Fatalf("DeriveSecretKey failed with large inputs: %v", err)
 		}
@@ -273,7 +273,7 @@ func TestDeriveSecretKey(t *testing.T) {
 
 	t.Run("MultipleDerivations", func(t *testing.T) {
 		// Test multiple derivations from the same master key
-		masterKey, err := config.GenerateSecretKey()
+		masterKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate master key: %v", err)
 		}
@@ -286,7 +286,7 @@ func TestDeriveSecretKey(t *testing.T) {
 		for i := 0; i < numDerivations; i++ {
 			context := []byte(fmt.Sprintf("context-%d", i))
 
-			derivedKey, err := config.DeriveSecretKey(masterKey, context, dst)
+			derivedKey, err := DeriveSecretKey(masterKey, context, dst)
 			if err != nil {
 				t.Fatalf("DeriveSecretKey %d failed: %v", i, err)
 			}

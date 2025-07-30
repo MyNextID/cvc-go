@@ -9,16 +9,16 @@ import (
 )
 
 func TestAddPublicKeys(t *testing.T) {
-	config := Config{}
+	// config := IssuerConfig{}
 
 	t.Run("ValidKeys", func(t *testing.T) {
 		// Generate two test keys
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate first test key: %v", err)
 		}
 
-		key2, err := config.GenerateSecretKey()
+		key2, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate second test key: %v", err)
 		}
@@ -46,7 +46,7 @@ func TestAddPublicKeys(t *testing.T) {
 		}
 
 		// Test the AddPublicKeys function
-		resultKey, err := config.AddPublicKeys(pubKey1, pubKey2)
+		resultKey, err := AddPublicKeys(pubKey1, pubKey2)
 		if err != nil {
 			t.Fatalf("AddPublicKeys failed: %v", err)
 		}
@@ -73,7 +73,7 @@ func TestAddPublicKeys(t *testing.T) {
 
 	t.Run("IdentityProperty", func(t *testing.T) {
 		// Test that adding a key to itself gives the double of the key
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate test key: %v", err)
 		}
@@ -89,7 +89,7 @@ func TestAddPublicKeys(t *testing.T) {
 		}
 
 		// Add key to itself (should give 2*P)
-		doubledKey, err := config.AddPublicKeys(pubKey1, pubKey1)
+		doubledKey, err := AddPublicKeys(pubKey1, pubKey1)
 		if err != nil {
 			t.Fatalf("AddPublicKeys failed for identity test: %v", err)
 		}
@@ -111,7 +111,7 @@ func TestAddPublicKeys(t *testing.T) {
 
 	t.Run("InvalidKeyType", func(t *testing.T) {
 		// Test with a non-ECDSA key (this should fail)
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate test key: %v", err)
 		}
@@ -133,7 +133,7 @@ func TestAddPublicKeys(t *testing.T) {
 		}
 
 		// This should fail
-		_, err = config.AddPublicKeys(pubKey1, invalidKey)
+		_, err = AddPublicKeys(pubKey1, invalidKey)
 		if err == nil {
 			t.Errorf("Expected error when using invalid key type, but got none")
 		}

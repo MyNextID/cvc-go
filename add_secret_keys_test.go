@@ -10,22 +10,22 @@ import (
 )
 
 func TestAddSecretKeys(t *testing.T) {
-	config := Config{}
+	// config := Config{}
 
 	t.Run("ValidKeys", func(t *testing.T) {
 		// Generate two test keys
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate first test key: %v", err)
 		}
 
-		key2, err := config.GenerateSecretKey()
+		key2, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate second test key: %v", err)
 		}
 
 		// Test the AddSecretKeys function
-		resultKey, err := config.AddSecretKeys(key1, key2)
+		resultKey, err := AddSecretKeys(key1, key2)
 		if err != nil {
 			t.Fatalf("AddSecretKeys failed: %v", err)
 		}
@@ -61,7 +61,7 @@ func TestAddSecretKeys(t *testing.T) {
 
 	t.Run("IdentityProperty", func(t *testing.T) {
 		// Test that adding a key to itself gives the double of the key
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate test key: %v", err)
 		}
@@ -73,7 +73,7 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Add key to itself (should give 2*d mod n)
-		doubledKey, err := config.AddSecretKeys(key1, key1)
+		doubledKey, err := AddSecretKeys(key1, key1)
 		if err != nil {
 			t.Fatalf("AddSecretKeys failed for identity test: %v", err)
 		}
@@ -105,23 +105,23 @@ func TestAddSecretKeys(t *testing.T) {
 
 	t.Run("CommutativeProperty", func(t *testing.T) {
 		// Test that key addition is commutative: key1 + key2 = key2 + key1
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate first test key: %v", err)
 		}
 
-		key2, err := config.GenerateSecretKey()
+		key2, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate second test key: %v", err)
 		}
 
 		// Add in both orders
-		result1, err := config.AddSecretKeys(key1, key2)
+		result1, err := AddSecretKeys(key1, key2)
 		if err != nil {
 			t.Fatalf("First AddSecretKeys failed: %v", err)
 		}
 
-		result2, err := config.AddSecretKeys(key2, key1)
+		result2, err := AddSecretKeys(key2, key1)
 		if err != nil {
 			t.Fatalf("Second AddSecretKeys failed: %v", err)
 		}
@@ -149,27 +149,27 @@ func TestAddSecretKeys(t *testing.T) {
 	})
 
 	t.Run("ErrorCases", func(t *testing.T) {
-		validKey, err := config.GenerateSecretKey()
+		validKey, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate valid test key: %v", err)
 		}
 
 		// Test nil first key
-		_, err = config.AddSecretKeys(nil, validKey)
+		_, err = AddSecretKeys(nil, validKey)
 		if err == nil {
 			t.Errorf("Expected error for nil first key, but got none")
 		}
 		t.Logf("Correctly rejected nil first key: %v", err)
 
 		// Test nil second key
-		_, err = config.AddSecretKeys(validKey, nil)
+		_, err = AddSecretKeys(validKey, nil)
 		if err == nil {
 			t.Errorf("Expected error for nil second key, but got none")
 		}
 		t.Logf("Correctly rejected nil second key: %v", err)
 
 		// Test both nil keys
-		_, err = config.AddSecretKeys(nil, nil)
+		_, err = AddSecretKeys(nil, nil)
 		if err == nil {
 			t.Errorf("Expected error for both nil keys, but got none")
 		}
@@ -181,7 +181,7 @@ func TestAddSecretKeys(t *testing.T) {
 			t.Fatalf("Failed to create invalid key: %v", err)
 		}
 
-		_, err = config.AddSecretKeys(validKey, invalidKey)
+		_, err = AddSecretKeys(validKey, invalidKey)
 		if err == nil {
 			t.Errorf("Expected error when using invalid key type, but got none")
 		}
@@ -190,12 +190,12 @@ func TestAddSecretKeys(t *testing.T) {
 
 	t.Run("ArithmeticVerification", func(t *testing.T) {
 		// Test that the arithmetic is correct by manually verifying
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate first test key: %v", err)
 		}
 
-		key2, err := config.GenerateSecretKey()
+		key2, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate second test key: %v", err)
 		}
@@ -210,7 +210,7 @@ func TestAddSecretKeys(t *testing.T) {
 		}
 
 		// Perform addition using the library
-		resultKey, err := config.AddSecretKeys(key1, key2)
+		resultKey, err := AddSecretKeys(key1, key2)
 		if err != nil {
 			t.Fatalf("AddSecretKeys failed: %v", err)
 		}
@@ -245,7 +245,7 @@ func TestAddSecretKeys(t *testing.T) {
 		// Test multiple sequential additions
 		keys := make([]jwk.Key, 5)
 		for i := 0; i < 5; i++ {
-			key, err := config.GenerateSecretKey()
+			key, err := GenerateSecretKey()
 			if err != nil {
 				t.Fatalf("Failed to generate key %d: %v", i, err)
 			}
@@ -255,7 +255,7 @@ func TestAddSecretKeys(t *testing.T) {
 		// Add keys sequentially: ((key0 + key1) + key2) + key3) + key4
 		result := keys[0]
 		for i := 1; i < len(keys); i++ {
-			newResult, err := config.AddSecretKeys(result, keys[i])
+			newResult, err := AddSecretKeys(result, keys[i])
 			if err != nil {
 				t.Fatalf("Failed to add key %d: %v", i, err)
 			}
@@ -285,19 +285,19 @@ func TestAddSecretKeys(t *testing.T) {
 		// Test with keys that have large private key values (near curve order)
 		// This tests edge cases in modular arithmetic
 
-		key1, err := config.GenerateSecretKey()
+		key1, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate first key: %v", err)
 		}
 
-		key2, err := config.GenerateSecretKey()
+		key2, err := GenerateSecretKey()
 		if err != nil {
 			t.Fatalf("Failed to generate second key: %v", err)
 		}
 
 		// Add them multiple times to increase the scalar values
 		for i := 0; i < 10; i++ {
-			newKey, err := config.AddSecretKeys(key1, key2)
+			newKey, err := AddSecretKeys(key1, key2)
 			if err != nil {
 				t.Fatalf("Failed to add keys in iteration %d: %v", i, err)
 			}

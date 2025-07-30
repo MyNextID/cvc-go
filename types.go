@@ -16,3 +16,19 @@ type UserData struct {
 	VcSecKey jwk.Key
 	VcPubKey jwk.Key
 }
+
+type KeyData struct {
+	KeyID    string
+	WpPubkey []byte
+}
+
+// message pack is yet to be defined in its final form
+type MessagePack struct {
+	EncVC                   []byte // encrypted with VcPubKey
+	EncVCSecKey             []byte // encrypted with WpPubKey
+	WpGenerateSecretKeysURL string // so you know which wp to call
+	KeyId                   string // needed to generate wp secret key
+	Salt                    []byte // needed to generate wp secret key
+	Email                   string // who gets the VC
+	DisplayMap              []byte // how VC looks in wallet
+}
