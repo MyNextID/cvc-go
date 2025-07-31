@@ -4,14 +4,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
+	"time"
 
 	"github.com/MyNextID/cvc-go/internal"
 	"github.com/MyNextID/cvc-go/pkg"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
@@ -145,7 +144,7 @@ func DeriveSecretKey(master jwk.Key, context, dst []byte) (jwk.Key, error) {
 	}
 
 	// Convert master JWK to JSON bytes for hashing
-	masterBytes, err := pkg.JWKToJson(master)
+	masterBytes, err := pkg.KeyJWKToJson(master)
 	if err != nil {
 		return nil, internal.WrapError(internal.ErrJWKExtraction, "failed to convert master key to JSON")
 	}
@@ -329,13 +328,30 @@ func privateKeyToBytes(d *big.Int) []byte {
 
 // Additional utility methods for the Config struct
 
+func isURLAccessible(url string) bool {
+	client := http.Client{
+		Timeout: 5 * time.Second, // Set timeout to avoid hanging requests
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode >= 200 && resp.StatusCode < 400
+}
+
 // ValidateConfig validates the configuration before use
 func (c *IssuerConfig) ValidateConfig() error {
-	return nil
+	if isURLAccessible(c.WpGeneratePublicKeysURL) {
+		return nil
+	}
+	return fmt.Errorf("Wallet provider generate public keys URL inaccessible")
 }
 
 func (c *ProviderConfig) ValidateConfig() error {
-	return nil
+	return IsKeyValid(c.MasterSecretKey)
 }
 
 // IsKeyValid checks if a JWK represents a valid NIST P-256 key
@@ -371,36 +387,4 @@ func IsKeyValid(key jwk.Key) error {
 	}
 
 	return nil
-}
-
-func KeyJWKToJson(key jwk.Key) ([]byte, error) {
-	jwkJSON, err := json.Marshal(key)
-	if err != nil {
-		return nil, err
-	}
-	return jwkJSON, nil
-}
-
-func KeyJsonToJWK(jwkJSON []byte) (jwk.Key, error) {
-	key, err := jwk.ParseKey(jwkJSON)
-	if err != nil {
-		return nil, err
-	}
-	return key, nil
-}
-
-func EncryptWithPublicKey(payload []byte, pkJWK jwk.Key) ([]byte, error) {
-
-	// Perform JWE encryption with ECDH-ES + A256KW, AES-GCM 256 content encryption
-	encrypted, err := jwe.Encrypt(
-		payload,
-		jwe.WithKey(jwa.ECDH_ES, pkJWK),
-		jwe.WithContentEncryption(jwa.A256GCM),
-		// jwe.WithContext(context.Background()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt with JWE: %w", err)
-	}
-
-	return encrypted, nil
 }

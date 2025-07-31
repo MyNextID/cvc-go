@@ -9,6 +9,8 @@ import (
 	"math/big"
 
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
@@ -23,7 +25,7 @@ func Hash(data []byte) []byte {
 	return hash[:]
 }
 
-func JWKToJson(key jwk.Key) ([]byte, error) {
+func KeyJWKToJson(key jwk.Key) ([]byte, error) {
 	jwkJSON, err := json.Marshal(key)
 	if err != nil {
 		return nil, err
@@ -31,7 +33,7 @@ func JWKToJson(key jwk.Key) ([]byte, error) {
 	return jwkJSON, nil
 }
 
-func JsonToJWK(jwkJSON []byte) (jwk.Key, error) {
+func KeyJsonToJWK(jwkJSON []byte) (jwk.Key, error) {
 	key, err := jwk.ParseKey(jwkJSON)
 	if err != nil {
 		return nil, err
@@ -85,4 +87,20 @@ func ValidatePublicKey(curve elliptic.Curve, xBig, yBig *big.Int) error {
 	}
 
 	return nil
+}
+
+func EncryptWithPublicKey(payload []byte, pkJWK jwk.Key) ([]byte, error) {
+
+	// Perform JWE encryption with ECDH-ES + A256KW, AES-GCM 256 content encryption
+	encrypted, err := jwe.Encrypt(
+		payload,
+		jwe.WithKey(jwa.ECDH_ES, pkJWK),
+		jwe.WithContentEncryption(jwa.A256GCM),
+		// jwe.WithContext(context.Background()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt with JWE: %w", err)
+	}
+
+	return encrypted, nil
 }

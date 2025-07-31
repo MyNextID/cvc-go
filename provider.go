@@ -11,7 +11,7 @@ import (
 
 type ProviderConfig struct {
 	MasterSecretKey jwk.Key
-	dst             string
+	Dst             string
 }
 
 func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) {
@@ -34,7 +34,7 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) 
 		context := append([]byte(keyID), hash...)
 
 		// get domain separation tag from config
-		dstByte := []byte(c.dst)
+		dstByte := []byte(c.Dst)
 
 		// derive public key
 		derivedSecretKey, err := DeriveSecretKey(c.MasterSecretKey, context, dstByte)
@@ -48,7 +48,7 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) 
 		}
 
 		// convert to json bytes
-		pubKeyBytes, err := KeyJWKToJson(derivedPublicKey)
+		pubKeyBytes, err := pkg.KeyJWKToJson(derivedPublicKey)
 		if err != nil {
 			log.Fatalf("Fail: %s", err)
 			return nil, fmt.Errorf("failed to marshal jwk to json bytes %s", err)

@@ -19,7 +19,7 @@ type IssuerConfig struct {
 }
 
 // F0 generates wallet provider public keys for a map of users
-func (c *IssuerConfig) F0(emailMap map[string]string) (map[string]*UserData, error) {
+func (c *IssuerConfig) GetPublicKeysFromWalletProvider(emailMap map[string]string) (map[string]*UserData, error) {
 	// Input validation
 	if len(emailMap) == 0 {
 		return nil, fmt.Errorf("emailMap cannot be nil or empty")
@@ -85,7 +85,7 @@ func (c *IssuerConfig) F0(emailMap map[string]string) (map[string]*UserData, err
 		// set values for user in return map
 		tempMap[userId].KeyID = data.KeyID
 		// for the key we need to convert it to jwk.Key from json bytes
-		wpPubKey, err := KeyJsonToJWK(data.WpPubkey)
+		wpPubKey, err := pkg.KeyJsonToJWK(data.WpPubkey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert json formatted key to jwk.Key: %s", err)
 		}
@@ -135,7 +135,7 @@ func (c *IssuerConfig) GeneratePublicKeys(hashBytes []byte) (map[string]KeyData,
 }
 
 // F1 generates VC keys and adds confirmation key to the VC payload
-func (c *IssuerConfig) F1(uuid string, vcPayload map[string]interface{}, userMap map[string]*UserData) error {
+func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interface{}, userMap map[string]*UserData) error {
 	// Input validation
 	if uuid == "" {
 		return fmt.Errorf("uuid cannot be empty")
@@ -185,7 +185,10 @@ func (c *IssuerConfig) F1(uuid string, vcPayload map[string]interface{}, userMap
 	return nil
 }
 
-func (c *IssuerConfig) F2(signedCredential []byte, uuid string, userMap map[string]*UserData, displayConf []byte) ([]byte, error) {
+// F2 encrypts the credential with credential public key and encrypts the credential secret key
+// with wallet provider public key. It returns the message pack to be send to the credential
+// recipient email
+func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, userMap map[string]*UserData, displayConf []byte) ([]byte, error) {
 	// initialize message pack
 	msgPack := &MessagePack{
 		WpGenerateSecretKeysURL: c.WpGeneratePublicKeysURL,
@@ -195,7 +198,7 @@ func (c *IssuerConfig) F2(signedCredential []byte, uuid string, userMap map[stri
 		DisplayMap:              displayConf,
 	}
 	// encrypt credential
-	encVC, err := EncryptWithPublicKey(signedCredential, userMap[uuid].VcPubKey)
+	encVC, err := pkg.EncryptWithPublicKey(signedCredential, userMap[uuid].VcPubKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt credential %w", err)
 	}
@@ -204,12 +207,12 @@ func (c *IssuerConfig) F2(signedCredential []byte, uuid string, userMap map[stri
 
 	// encrypt credential secret key
 	// first convert to bytes
-	vcSecBytes, err := KeyJWKToJson(userMap[uuid].VcSecKey)
+	vcSecBytes, err := pkg.KeyJWKToJson(userMap[uuid].VcSecKey)
 	if err != nil {
 		log.Fatalf("Failed to convert secret key to bytes %v", err)
 		return nil, err
 	}
-	encVCSecKey, err := EncryptWithPublicKey(vcSecBytes, userMap[uuid].WpPubKey)
+	encVCSecKey, err := pkg.EncryptWithPublicKey(vcSecBytes, userMap[uuid].WpPubKey)
 	if err != nil {
 		log.Fatalf("Failed to encrypt vc secret key %v", err)
 		return nil, err
