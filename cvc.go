@@ -6,20 +6,16 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"net/http"
+	"time"
 
 	"github.com/MyNextID/cvc-go/internal"
 	"github.com/MyNextID/cvc-go/pkg"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// Config holds the configuration for CVC operations
-type Config struct {
-	MasterKeyStore MasterKeyStore
-	CredentialKey  []byte
-}
-
 // GenerateSecretKey generates a cryptographically secure NIST P-256 private key
-func (c *Config) GenerateSecretKey() (jwk.Key, error) {
+func GenerateSecretKey() (jwk.Key, error) {
 	// Generate cryptographically secure random seed
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
@@ -33,7 +29,7 @@ func (c *Config) GenerateSecretKey() (jwk.Key, error) {
 	}
 
 	// Convert key material to JWK
-	jwkKey, err := c.keyMaterialToJWK(keyMaterial)
+	jwkKey, err := keyMaterialToJWK(keyMaterial)
 	if err != nil {
 		return nil, internal.WrapError(err, "failed to convert generated key to JWK")
 	}
@@ -42,7 +38,7 @@ func (c *Config) GenerateSecretKey() (jwk.Key, error) {
 }
 
 // AddSecretKeys adds two ECDSA private keys using scalar addition modulo curve order
-func (c *Config) AddSecretKeys(key1, key2 jwk.Key) (jwk.Key, error) {
+func AddSecretKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 	// Input validation
 	if key1 == nil {
 		return nil, internal.WrapError(internal.ErrInvalidKey, "first key cannot be nil")
@@ -52,19 +48,19 @@ func (c *Config) AddSecretKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 	}
 
 	// Extract private keys from JWKs
-	privateKey1, err := c.extractPrivateKey(key1, "first key")
+	privateKey1, err := extractPrivateKey(key1, "first key")
 	if err != nil {
 		return nil, err
 	}
 
-	privateKey2, err := c.extractPrivateKey(key2, "second key")
+	privateKey2, err := extractPrivateKey(key2, "second key")
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert private key scalars to byte arrays
-	key1Bytes := c.privateKeyToBytes(privateKey1.D)
-	key2Bytes := c.privateKeyToBytes(privateKey2.D)
+	key1Bytes := privateKeyToBytes(privateKey1.D)
+	key2Bytes := privateKeyToBytes(privateKey2.D)
 
 	// Perform scalar addition using internal C bindings
 	resultKeyMaterial, err := internal.AddSecretKeys(key1Bytes, key2Bytes)
@@ -73,7 +69,7 @@ func (c *Config) AddSecretKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 	}
 
 	// Convert result to JWK
-	resultJWK, err := c.keyMaterialToJWK(resultKeyMaterial)
+	resultJWK, err := keyMaterialToJWK(resultKeyMaterial)
 	if err != nil {
 		return nil, internal.WrapError(err, "failed to convert result to JWK")
 	}
@@ -82,7 +78,7 @@ func (c *Config) AddSecretKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 }
 
 // AddPublicKeys adds two ECDSA public keys using elliptic curve point addition
-func (c *Config) AddPublicKeys(key1, key2 jwk.Key) (jwk.Key, error) {
+func AddPublicKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 	// Input validation
 	if key1 == nil {
 		return nil, internal.WrapError(internal.ErrInvalidKey, "first key cannot be nil")
@@ -92,12 +88,12 @@ func (c *Config) AddPublicKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 	}
 
 	// Extract public keys from JWKs
-	pubKey1, err := c.extractPublicKey(key1, "first key")
+	pubKey1, err := extractPublicKey(key1, "first key")
 	if err != nil {
 		return nil, err
 	}
 
-	pubKey2, err := c.extractPublicKey(key2, "second key")
+	pubKey2, err := extractPublicKey(key2, "second key")
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +115,7 @@ func (c *Config) AddPublicKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 	}
 
 	// Validate the resulting public key
-	if err := c.validatePublicKey(resultECDSA); err != nil {
+	if err := validatePublicKey(resultECDSA); err != nil {
 		return nil, internal.WrapError(err, "result public key validation failed")
 	}
 
@@ -133,7 +129,7 @@ func (c *Config) AddPublicKeys(key1, key2 jwk.Key) (jwk.Key, error) {
 }
 
 // DeriveSecretKey derives a secret key from master key material using hash-to-field
-func (c *Config) DeriveSecretKey(master jwk.Key, context, dst []byte) (jwk.Key, error) {
+func DeriveSecretKey(master jwk.Key, context, dst []byte) (jwk.Key, error) {
 	// Input validation
 	if master == nil {
 		return nil, internal.WrapError(internal.ErrInvalidKey, "master key cannot be nil")
@@ -148,7 +144,7 @@ func (c *Config) DeriveSecretKey(master jwk.Key, context, dst []byte) (jwk.Key, 
 	}
 
 	// Convert master JWK to JSON bytes for hashing
-	masterBytes, err := pkg.JWKToJson(master)
+	masterBytes, err := pkg.KeyJWKToJson(master)
 	if err != nil {
 		return nil, internal.WrapError(internal.ErrJWKExtraction, "failed to convert master key to JSON")
 	}
@@ -173,13 +169,13 @@ func (c *Config) DeriveSecretKey(master jwk.Key, context, dst []byte) (jwk.Key, 
 	}
 
 	// Convert derived key material to JWK
-	derivedJWK, err := c.keyMaterialToJWK(derivedKeyMaterial)
+	derivedJWK, err := keyMaterialToJWK(derivedKeyMaterial)
 	if err != nil {
 		return nil, internal.WrapError(err, "failed to convert derived key to JWK")
 	}
 
 	// Additional validation of derived key
-	if err := c.validateDerivedKey(derivedJWK); err != nil {
+	if err := validateDerivedKey(derivedJWK); err != nil {
 		return nil, internal.WrapError(err, "derived key validation failed")
 	}
 
@@ -187,7 +183,7 @@ func (c *Config) DeriveSecretKey(master jwk.Key, context, dst []byte) (jwk.Key, 
 }
 
 // keyMaterialToJWK converts internal key material to a JWK private key
-func (c *Config) keyMaterialToJWK(keyMaterial internal.KeyMaterial) (jwk.Key, error) {
+func keyMaterialToJWK(keyMaterial internal.KeyMaterial) (jwk.Key, error) {
 	// Get key material as byte slices
 	dBytes, xBytes, yBytes := keyMaterial.GetKeyMaterialBytes()
 
@@ -239,7 +235,7 @@ func (c *Config) keyMaterialToJWK(keyMaterial internal.KeyMaterial) (jwk.Key, er
 }
 
 // extractPrivateKey extracts an ECDSA private key from a JWK
-func (c *Config) extractPrivateKey(key jwk.Key, keyName string) (*ecdsa.PrivateKey, error) {
+func extractPrivateKey(key jwk.Key, keyName string) (*ecdsa.PrivateKey, error) {
 	var privateKey ecdsa.PrivateKey
 	if err := key.Raw(&privateKey); err != nil {
 		return nil, internal.WrapError(internal.ErrJWKExtraction, fmt.Sprintf("failed to extract %s as ECDSA private key", keyName))
@@ -264,7 +260,7 @@ func (c *Config) extractPrivateKey(key jwk.Key, keyName string) (*ecdsa.PrivateK
 }
 
 // extractPublicKey extracts an ECDSA public key from a JWK
-func (c *Config) extractPublicKey(key jwk.Key, keyName string) (*ecdsa.PublicKey, error) {
+func extractPublicKey(key jwk.Key, keyName string) (*ecdsa.PublicKey, error) {
 	// Try to extract as public key first
 	var pubKey ecdsa.PublicKey
 	if err := key.Raw(&pubKey); err != nil {
@@ -282,7 +278,7 @@ func (c *Config) extractPublicKey(key jwk.Key, keyName string) (*ecdsa.PublicKey
 	}
 
 	// Validate public key
-	if err := c.validatePublicKey(&pubKey); err != nil {
+	if err := validatePublicKey(&pubKey); err != nil {
 		return nil, internal.WrapError(err, fmt.Sprintf("%s validation failed", keyName))
 	}
 
@@ -290,7 +286,7 @@ func (c *Config) extractPublicKey(key jwk.Key, keyName string) (*ecdsa.PublicKey
 }
 
 // validatePublicKey validates an ECDSA public key
-func (c *Config) validatePublicKey(pubKey *ecdsa.PublicKey) error {
+func validatePublicKey(pubKey *ecdsa.PublicKey) error {
 	if pubKey.X == nil || pubKey.Y == nil {
 		return internal.WrapError(internal.ErrInvalidKey, "public key coordinates are nil")
 	}
@@ -308,9 +304,9 @@ func (c *Config) validatePublicKey(pubKey *ecdsa.PublicKey) error {
 }
 
 // validateDerivedKey performs additional validation on a derived key
-func (c *Config) validateDerivedKey(key jwk.Key) error {
+func validateDerivedKey(key jwk.Key) error {
 	// Extract and validate the derived private key
-	_, err := c.extractPrivateKey(key, "derived key")
+	_, err := extractPrivateKey(key, "derived key")
 	if err != nil {
 		return err
 	}
@@ -320,7 +316,7 @@ func (c *Config) validateDerivedKey(key jwk.Key) error {
 }
 
 // privateKeyToBytes converts a big.Int private key to a 32-byte array (big-endian)
-func (c *Config) privateKeyToBytes(d *big.Int) []byte {
+func privateKeyToBytes(d *big.Int) []byte {
 	keyBytes := make([]byte, internal.KeySize)
 	dBytes := d.Bytes()
 
@@ -332,41 +328,34 @@ func (c *Config) privateKeyToBytes(d *big.Int) []byte {
 
 // Additional utility methods for the Config struct
 
-// ValidateConfig validates the configuration before use
-func (c *Config) ValidateConfig() error {
-	if c.MasterKeyStore == nil {
-		return internal.WrapError(internal.ErrMasterKeyNotSet, "master key store is not configured")
+func isURLAccessible(url string) bool {
+	client := http.Client{
+		Timeout: 5 * time.Second, // Set timeout to avoid hanging requests
 	}
 
-	if len(c.CredentialKey) == 0 {
-		return internal.WrapError(internal.ErrInvalidParameters, "credential key is not set")
-	}
-
-	// Test that we can retrieve the master key
-	_, err := c.MasterKeyStore.GetMasterKey()
+	resp, err := client.Get(url)
 	if err != nil {
-		return internal.WrapError(err, "failed to retrieve master key from store")
+		return false
 	}
+	defer resp.Body.Close()
 
-	return nil
+	return resp.StatusCode >= 200 && resp.StatusCode < 400
 }
 
-// GetMasterKey is a convenience method to get the master key
-func (c *Config) GetMasterKey() (jwk.Key, error) {
-	if c.MasterKeyStore == nil {
-		return nil, internal.WrapError(internal.ErrMasterKeyNotSet, "master key store is not configured")
+// ValidateConfig validates the configuration before use
+func (c *IssuerConfig) ValidateConfig() error {
+	if isURLAccessible(c.WpGeneratePublicKeysURL) {
+		return nil
 	}
+	return fmt.Errorf("Wallet provider generate public keys URL inaccessible")
+}
 
-	masterKey, err := c.MasterKeyStore.GetMasterKey()
-	if err != nil {
-		return nil, internal.WrapError(err, "failed to retrieve master key")
-	}
-
-	return masterKey, nil
+func (c *ProviderConfig) ValidateConfig() error {
+	return IsKeyValid(c.MasterSecretKey)
 }
 
 // IsKeyValid checks if a JWK represents a valid NIST P-256 key
-func (c *Config) IsKeyValid(key jwk.Key) error {
+func IsKeyValid(key jwk.Key) error {
 	if key == nil {
 		return internal.WrapError(internal.ErrInvalidKey, "key is nil")
 	}
@@ -379,11 +368,11 @@ func (c *Config) IsKeyValid(key jwk.Key) error {
 		if err := key.Raw(&pubKey); err != nil {
 			return internal.WrapError(internal.ErrKeyTypeUnsupported, "key is not an ECDSA key")
 		}
-		return c.validatePublicKey(&pubKey)
+		return validatePublicKey(&pubKey)
 	}
 
 	// Validate both private and public parts
-	if err := c.validatePublicKey(&privateKey.PublicKey); err != nil {
+	if err := validatePublicKey(&privateKey.PublicKey); err != nil {
 		return err
 	}
 
