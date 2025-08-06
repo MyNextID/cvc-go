@@ -90,14 +90,13 @@ func ValidatePublicKey(curve elliptic.Curve, xBig, yBig *big.Int) error {
 }
 
 func EncryptWithPublicKey(payload []byte, pkJWK jwk.Key) ([]byte, error) {
-
 	// Perform JWE encryption with ECDH-ES + A256KW, AES-GCM 256 content encryption
 	encrypted, err := jwe.Encrypt(
 		payload,
 		jwe.WithKey(jwa.ECDH_ES, pkJWK),
 		jwe.WithContentEncryption(jwa.A256GCM),
-		// jwe.WithContext(context.Background()),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt with JWE: %w", err)
 	}

@@ -3,7 +3,6 @@ package cvc
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/MyNextID/cvc-go/pkg"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -17,7 +16,7 @@ type ProviderConfig struct {
 func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) {
 	// unmarshal request
 	var hashSlices []string
-	err := json.Unmarshal([]byte(requestJson), &hashSlices)
+	err := json.Unmarshal(requestJson, &hashSlices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal request %s", err)
 	}
@@ -50,8 +49,7 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) 
 		// convert to json bytes
 		pubKeyBytes, err := pkg.KeyJWKToJson(derivedPublicKey)
 		if err != nil {
-			log.Fatalf("Fail: %s", err)
-			return nil, fmt.Errorf("failed to marshal jwk to json bytes %s", err)
+			return nil, fmt.Errorf("failed to marshal jwk to json bytes %w", err)
 		}
 
 		// make entry into map

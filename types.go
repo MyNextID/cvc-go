@@ -18,8 +18,8 @@ type UserData struct {
 }
 
 type KeyData struct {
-	KeyID    string
-	WpPubkey []byte
+	KeyID    string `json:"key_id"`
+	WpPubkey []byte `json:"wp_pubkey"`
 }
 
 // message pack is yet to be defined in its final form

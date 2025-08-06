@@ -347,7 +347,7 @@ func (c *IssuerConfig) ValidateConfig() error {
 	if isURLAccessible(c.WpGeneratePublicKeysURL) {
 		return nil
 	}
-	return fmt.Errorf("Wallet provider generate public keys URL inaccessible")
+	return fmt.Errorf("wallet provider generate public keys URL inaccessible")
 }
 
 func (c *ProviderConfig) ValidateConfig() error {

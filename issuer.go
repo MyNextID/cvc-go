@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/MyNextID/cvc-go/pkg"
@@ -18,7 +17,7 @@ type IssuerConfig struct {
 	WpGenerateSecretKeysURL string
 }
 
-// F0 generates wallet provider public keys for a map of users
+// GetPublicKeysFromWalletProvider (F0) generates wallet provider public keys for a map of users
 func (c *IssuerConfig) GetPublicKeysFromWalletProvider(emailMap map[string]string) (map[string]*UserData, error) {
 	// Input validation
 	if len(emailMap) == 0 {
@@ -134,7 +133,7 @@ func (c *IssuerConfig) GeneratePublicKeys(hashBytes []byte) (map[string]KeyData,
 	return receivedMap, err
 }
 
-// F1 generates VC keys and adds confirmation key to the VC payload
+// AddCnfToPayload (F1) generates VC keys and adds confirmation key to the VC payload
 func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interface{}, userMap map[string]*UserData) error {
 	// Input validation
 	if uuid == "" {
@@ -185,7 +184,7 @@ func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interfa
 	return nil
 }
 
-// F2 encrypts the credential with credential public key and encrypts the credential secret key
+// PrepareMessagePack (F2) encrypts the credential with credential public key and encrypts the credential secret key
 // with wallet provider public key. It returns the message pack to be send to the credential
 // recipient email
 func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, userMap map[string]*UserData, displayConf []byte) ([]byte, error) {
@@ -209,13 +208,11 @@ func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, 
 	// first convert to bytes
 	vcSecBytes, err := pkg.KeyJWKToJson(userMap[uuid].VcSecKey)
 	if err != nil {
-		log.Fatalf("Failed to convert secret key to bytes %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to convert secret key to bytes %w", err)
 	}
 	encVCSecKey, err := pkg.EncryptWithPublicKey(vcSecBytes, userMap[uuid].WpPubKey)
 	if err != nil {
-		log.Fatalf("Failed to encrypt vc secret key %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to encrypt vc secret key %w", err)
 	}
 	// add to pack
 	msgPack.EncVCSecKey = encVCSecKey
@@ -223,8 +220,7 @@ func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, 
 	// 	// convert pack to json (for now; final version will have a dedicated format)
 	msgPackBytes, err := json.Marshal(msgPack)
 	if err != nil {
-		log.Fatalf("failed to marshal MessagePack: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal MessagePack %w", err)
 	}
 
 	return msgPackBytes, nil
