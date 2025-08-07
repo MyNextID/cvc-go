@@ -134,36 +134,36 @@ func (c *IssuerConfig) GeneratePublicKeys(hashBytes []byte) (map[string]KeyData,
 }
 
 // AddCnfToPayload (F1) generates VC keys and adds confirmation key to the VC payload
-func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interface{}, userMap map[string]*UserData) error {
+func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interface{}, userMap map[string]*UserData) (map[string]interface{}, *UserData, error) {
 	// Input validation
 	if uuid == "" {
-		return fmt.Errorf("uuid cannot be empty")
+		return nil, nil, fmt.Errorf("uuid cannot be empty")
 	}
 	if vcPayload == nil {
-		return fmt.Errorf("vcPayload cannot be nil")
+		return nil, nil, fmt.Errorf("vcPayload cannot be nil")
 	}
 	if userMap == nil {
-		return fmt.Errorf("userMap cannot be nil")
+		return nil, nil, fmt.Errorf("userMap cannot be nil")
 	}
 
 	userData, exists := userMap[uuid]
 	if !exists {
-		return fmt.Errorf("user data not found for uuid: %s", uuid)
+		return nil, nil, fmt.Errorf("user data not found for uuid: %s", uuid)
 	}
 	if userData.WpPubKey == nil {
-		return fmt.Errorf("wallet provider public key not set for user: %s", uuid)
+		return nil, nil, fmt.Errorf("wallet provider public key not set for user: %s", uuid)
 	}
 
 	// Generate VC secret key
 	vcSecretKey, err := GenerateSecretKey()
 	if err != nil {
-		return fmt.Errorf("failed to generate VC secret key for user %s: %w", uuid, err)
+		return nil, nil, fmt.Errorf("failed to generate VC secret key for user %s: %w", uuid, err)
 	}
 
 	// Extract public key from the secret key
 	vcPublicKey, err := vcSecretKey.PublicKey()
 	if err != nil {
-		return fmt.Errorf("failed to extract VC public key JWK for user %s: %w", uuid, err)
+		return nil, nil, fmt.Errorf("failed to extract VC public key JWK for user %s: %w", uuid, err)
 	}
 
 	// Store keys in user data
@@ -173,15 +173,15 @@ func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interfa
 	// Generate confirmation key by adding VC public key + WP public key
 	cnfKey, err := AddPublicKeys(userData.VcPubKey, userData.WpPubKey)
 	if err != nil {
-		return fmt.Errorf("failed to generate confirmation key for user %s: %w", uuid, err)
+		return nil, nil, fmt.Errorf("failed to generate confirmation key for user %s: %w", uuid, err)
 	}
 
 	// Add confirmation key to VC payload
 	if err := pkg.AddKeyToPayload(vcPayload, cnfKey); err != nil {
-		return fmt.Errorf("failed to add confirmation key to payload for user %s: %w", uuid, err)
+		return nil, nil, fmt.Errorf("failed to add confirmation key to payload for user %s: %w", uuid, err)
 	}
 
-	return nil
+	return vcPayload, userData, nil
 }
 
 // PrepareMessagePack (F2) encrypts the credential with credential public key and encrypts the credential secret key
