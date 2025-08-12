@@ -32,3 +32,9 @@ type MessagePack struct {
 	Email                   string // who gets the VC
 	DisplayMap              []byte // how VC looks in wallet
 }
+
+type SecretKeyData struct {
+	KeyId string 
+	Salt  []byte
+	Email []byte
+}

@@ -1,6 +1,7 @@
 package cvc
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
@@ -62,4 +63,38 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) 
 		return nil, err
 	}
 	return keyMapBytes, nil
+}
+
+func (c *ProviderConfig) GenerateSecretKey(requestJson []byte) ([]byte, error) {
+	// unmarshal request
+	var keyData SecretKeyData
+	err := json.Unmarshal(requestJson, &keyData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal request %s", err)
+	}
+
+	// generate hash part of the key (in the same way as the issuer does)
+	data := append([]byte(keyData.Email), keyData.Salt...)
+	hashed := pkg.Hash(data)
+	base64Hash := base64.StdEncoding.EncodeToString(hashed)
+
+	// combine hash with keyId
+	context := append([]byte(keyData.KeyId), base64Hash...)
+
+	// get domain separation tag from config
+	dstByte := []byte(c.Dst)
+
+	// derive the secret key
+	derivedSecretKey, err := DeriveSecretKey(c.MasterSecretKey, context, dstByte)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive secret key %s", err)
+	}
+
+	// convert to json bytes
+	secKeyBytes, err := pkg.KeyJWKToJson(derivedSecretKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal jwk to json bytes %w", err)
+	}
+
+	return secKeyBytes, nil
 }
