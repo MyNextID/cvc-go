@@ -65,7 +65,7 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) 
 	return keyMapBytes, nil
 }
 
-func (c *ProviderConfig) GenerateSecretKey(requestJson []byte) ([]byte, error) {
+func (c *ProviderConfig) GenerateSecretKey(requestJson []byte, dst string) ([]byte, error) {
 	// unmarshal request
 	var keyData SecretKeyData
 	err := json.Unmarshal(requestJson, &keyData)
@@ -81,8 +81,11 @@ func (c *ProviderConfig) GenerateSecretKey(requestJson []byte) ([]byte, error) {
 	// combine hash with keyId
 	context := append([]byte(keyData.KeyId), base64Hash...)
 
-	// get domain separation tag from config
-	dstByte := []byte(c.Dst)
+	// get domain separation tag from config if empty
+	if dst == "" {
+		dst = c.Dst
+	}
+	dstByte := []byte(dst)
 
 	// derive the secret key
 	derivedSecretKey, err := DeriveSecretKey(c.MasterSecretKey, context, dstByte)
