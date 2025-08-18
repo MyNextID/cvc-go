@@ -3,6 +3,7 @@ module github.com/MyNextID/cvc-go
 go 1.24.2
 
 require (
+	github.com/emvi/iso-639-1 v1.1.1
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 )
