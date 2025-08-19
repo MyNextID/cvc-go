@@ -36,5 +36,5 @@ type MessagePack struct {
 type SecretKeyData struct {
 	KeyId string `json:"key_id"`
 	Salt  []byte `json:"salt"`
-	Email []byte `json:"email"`
+	Email string `json:"email"`
 }
