@@ -11,10 +11,10 @@ import (
 
 type ProviderConfig struct {
 	MasterSecretKey jwk.Key
-	DST             string
+	Dst             string
 }
 
-func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte, overrideDST string) ([]byte, error) {
+func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) {
 	// unmarshal request
 	var hashSlices []string
 	err := json.Unmarshal(requestJson, &hashSlices)
@@ -33,13 +33,7 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte, overrideDST stri
 		// combine with hash
 		context := append([]byte(keyID), hash...)
 
-		var dstByte []byte
-		// get domain separation tag from config
-		if overrideDST != "" {
-			dstByte = []byte(overrideDST)
-		} else {
-			dstByte = []byte(c.DST)
-		}
+		dstByte := []byte(c.Dst)
 
 		// derive public key
 		derivedSecretKey, err := DeriveSecretKey(c.MasterSecretKey, context, dstByte)
