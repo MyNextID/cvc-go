@@ -7,29 +7,29 @@ import (
 )
 
 type Language struct {
-	code string
+	Code string
 }
 
 // NewLanguage creates a new Language with validation
 func NewLanguage(code string) (*Language, error) {
 	if !iso6391.ValidCode(code) {
-		return nil, fmt.Errorf("invalid ISO 639-1 language code: %s", code)
+		return nil, fmt.Errorf("invalid ISO 639-1 language Code: %s", code)
 	}
-	return &Language{code: code}, nil
+	return &Language{Code: code}, nil
 }
 
 func (l Language) IsValid() bool {
-	return iso6391.ValidCode(l.code)
+	return iso6391.ValidCode(l.Code)
 }
 
 func (l Language) GetName() string {
-	return iso6391.Name(l.code)
+	return iso6391.Name(l.Code)
 }
 
-// Validate validates the language code and returns an error if invalid
+// Validate validates the language Code and returns an error if invalid
 func (l Language) Validate() error {
 	if !l.IsValid() {
-		return fmt.Errorf("invalid ISO 639-1 language code: %s", l.code)
+		return fmt.Errorf("invalid ISO 639-1 language Code: %s", l.Code)
 	}
 	return nil
 }
