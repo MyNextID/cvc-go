@@ -30,7 +30,7 @@ func NewDurationFormat() ElementFormat {
 
 // MarshalJSON implements json.Marshaler interface
 // This ensures that ElementFormat serializes as a simple string value
-func (f ElementFormat) MarshalJSON() ([]byte, error) {
+func (f *ElementFormat) MarshalJSON() ([]byte, error) {
 	if f.Type == "" {
 		return json.Marshal(nil)
 	}
@@ -48,11 +48,11 @@ func (f *ElementFormat) UnmarshalJSON(data []byte) error {
 }
 
 // IsEmpty returns true if the format is not set
-func (f ElementFormat) IsEmpty() bool {
+func (f *ElementFormat) IsEmpty() bool {
 	return f.Type == ""
 }
 
 // String returns the string representation of the format
-func (f ElementFormat) String() string {
+func (f *ElementFormat) String() string {
 	return string(f.Type)
 }
