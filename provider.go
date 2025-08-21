@@ -33,7 +33,6 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) 
 		// combine with hash
 		context := append([]byte(keyID), hash...)
 
-		// get domain separation tag from config
 		dstByte := []byte(c.Dst)
 
 		// derive public key

@@ -1,6 +1,7 @@
 # CVC-Go
 
-Go SDK for the CVC (Cryptographic Verification Components) library - providing high-performance cryptographic operations for Go applications.
+Go SDK for the CVC (Cryptographic Verification Components) library - providing high-performance cryptographic operations
+for Go applications.
 
 ## Overview
 
@@ -13,6 +14,7 @@ CVC-Go is a Go wrapper around the [CVC C library](https://github.com/MyNextID/cv
 - **Cross-Platform**: Pre-compiled static libraries for all major platforms
 
 Built on battle-tested cryptographic foundations:
+
 - [MIRACL Core](https://github.com/miracl/core) for elliptic curve operations
 - [l8w8jwt](https://github.com/GlitchedPolygons/l8w8jwt) for JWT/JOSE functionality
 
@@ -23,6 +25,7 @@ go get github.com/MyNextID/cvc-go
 ```
 
 No additional setup required! The SDK includes pre-compiled static libraries for:
+
 - **macOS**: arm64, x86_64
 - **Linux**: x86_64, aarch64
 - **Windows**: x86_64
@@ -61,10 +64,10 @@ For detailed information about the underlying cryptographic implementations and 
 
 | Platform | Architecture | Status |
 |----------|--------------|--------|
-| macOS    | arm64        | ✅     |
-| Linux    | x86_64       | ✅     |
-| Linux    | aarch64      | ✅     |
-| Windows  | x86_64       | ✅     |
+| macOS    | arm64        | ✅      |
+| Linux    | x86_64       | ✅      |
+| Linux    | aarch64      | ✅      |
+| Windows  | x86_64       | ✅      |
 
 ## Requirements
 

@@ -1,0 +1,131 @@
+{
+  "languages": [
+    "en",
+    "sl"
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "elements": [
+        {
+          "title": {
+            "en": "Full name",
+            "sl": "Polno ime"
+          },
+          "multilanguage": false,
+          "value": "/credentialSubject/fullName/en"
+        },
+        {
+          "title": {
+            "en": "Issued on",
+            "sl": "Datum izdaje"
+          },
+          "multilanguage": false,
+          "format": "date-time",
+          "value": "/issuanceDate"
+        },
+        {
+          "title": {
+            "en": "Official name",
+            "sl": "Uradno ime"
+          },
+          "multilanguage": true,
+          "values": {
+            "en": "/issuer/legalName/en",
+            "sl": "/issuer/legalName/sl"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": {
+        "en": "Activity information",
+        "sl": "Podatki o aktivnosti"
+      },
+      "elements": [
+        {
+          "title": {
+            "en": "Website",
+            "sl": "Spletna stran"
+          },
+          "multilanguage": false,
+          "optional": true,
+          "value": "/issuer/homepage/contentURL"
+        },
+        {
+          "title": {
+            "en": "Location",
+            "sl": "Lokacija"
+          },
+          "multilanguage": true,
+          "values": {
+            "en": "/issuer/location/description/en",
+            "sl": "/issuer/location/description/sl"
+          }
+        },
+        {
+          "title": {
+            "en": "Address",
+            "sl": "Naslov"
+          },
+          "multilanguage": true,
+          "values": {
+            "en": "/issuer/location/address/fullAddress/noteLiteral/en",
+            "sl": "/issuer/location/address/fullAddress/noteLiteral/sl"
+          }
+        },
+        {
+          "title": {
+            "en": "Country",
+            "sl": "Država"
+          },
+          "multilanguage": true,
+          "optional": true,
+          "values": {
+            "en": "/issuer/registration/spatial/prefLabel/en",
+            "sl": "/issuer/registration/spatial/prefLabel/sl"
+          }
+        },
+        {
+          "title": {
+            "en": "Duration",
+            "sl": "Trajanje v urah"
+          },
+          "multilanguage": false,
+          "optional": true,
+          "format": "duration",
+          "value": "/credentialSubject/hasClaim/workload"
+        },
+        {
+          "title": {
+            "en": "Start date",
+            "sl": "Datum začetka"
+          },
+          "multilanguage": false,
+          "optional": true,
+          "format": "date-time",
+          "value": "/credentialSubject/hasClaim/temporal/startDate"
+        },
+        {
+          "title": {
+            "en": "End date",
+            "sl": "Datum konca"
+          },
+          "multilanguage": false,
+          "optional": true,
+          "format": "date-time",
+          "value": "/credentialSubject/hasClaim/temporal/endDate"
+        },
+        {
+          "title": {
+            "en": "Identifier",
+            "sl": "Identifikator"
+          },
+          "multilanguage": false,
+          "value": "/issuer/registration/notation"
+        }
+      ]
+    }
+  ]
+}
