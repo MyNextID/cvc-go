@@ -11,15 +11,12 @@ type Presentation struct {
 }
 
 func (p *Presentation) Create() ([]byte, error) {
-	// Step 1: Validation
 	if err := p.validate(); err != nil {
 		return nil, err
 	}
 
-	// Step 2: Build the output structure
 	output := p.buildOutput()
 
-	// Step 3: Marshal to JSON
 	jsonBytes, err := json.Marshal(output)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal presentation to JSON: %w", err)
@@ -29,23 +26,19 @@ func (p *Presentation) Create() ([]byte, error) {
 }
 
 func (p *Presentation) validate() error {
-	// Validate languages
 	for _, lang := range p.Languages {
 		if !lang.IsValid() {
 			return fmt.Errorf("language: %v is not valid", lang)
 		}
 	}
 
-	// Validate groups and elements consistency
 	for _, group := range p.Groups {
 		err := group.Validate()
 		if err != nil {
 			return err
 		}
 
-		// Validate elements multilanguage requirements
 		for _, element := range group.Elements {
-			// Skip validation if optional
 			if element.Optional {
 				continue
 			}
@@ -61,7 +54,6 @@ func (p *Presentation) validate() error {
 }
 
 func (p *Presentation) buildOutput() map[string]interface{} {
-	// Define output structures that match the JSON schema
 	type OutputElement struct {
 		Title         map[string]string `json:"title"`
 		Multilanguage bool              `json:"multilanguage,omitzero"`
@@ -82,13 +74,11 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 		Groups    []OutputGroup `json:"groups"`
 	}
 
-	// Transform languages
 	languages := make([]string, len(p.Languages))
 	for i, lang := range p.Languages {
 		languages[i] = lang.Code
 	}
 
-	// Transform groups
 	groups := make([]OutputGroup, len(p.Groups))
 	for i, group := range p.Groups {
 		outputGroup := OutputGroup{
@@ -96,12 +86,7 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 			Elements: make([]OutputElement, len(group.Elements)),
 		}
 
-		// Only set title if it's not empty
 		if len(group.Titles) != 0 {
-			// Create title map for all languages with the same title
-			// Note: The current Group struct only has a single Title string,
-			// but the JSON examples show title as a language map.
-			// This might need adjustment based on your actual requirements.
 			titleMap := make(map[string]string)
 			for _, lang := range p.Languages {
 				titleMap[lang.Code] = group.Titles[lang]
@@ -109,7 +94,6 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 			outputGroup.Title = titleMap
 		}
 
-		// Transform elements
 		for j, element := range group.Elements {
 			outputElement := OutputElement{
 				Title:         make(map[string]string),
@@ -117,17 +101,14 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 				Optional:      element.Optional,
 			}
 
-			// Transform titles
 			for lang, title := range element.Titles {
 				outputElement.Title[lang.Code] = title
 			}
 
-			// Set format if not empty
 			if !element.Format.IsEmpty() {
 				outputElement.Format = element.Format.String()
 			}
 
-			// Set value or values based on multilanguage flag
 			if element.Multilanguage {
 				outputElement.Values = make(map[string]string)
 				for lang, value := range element.Values {
@@ -143,13 +124,11 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 		groups[i] = outputGroup
 	}
 
-	// Create the final output structure
 	output := OutputPresentation{
 		Languages: languages,
 		Groups:    groups,
 	}
 
-	// Convert to map[string]interface{} for JSON marshaling
 	result := make(map[string]interface{})
 	result["languages"] = output.Languages
 	result["groups"] = output.Groups
