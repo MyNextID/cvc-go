@@ -22,15 +22,15 @@ type KeyData struct {
 	WpPubkey []byte `json:"wp_pubkey"`
 }
 
-// message pack is yet to be defined in its final form
+// MessagePack - todo define its final form
 type MessagePack struct {
-	EncVC                   []byte // encrypted with VcPubKey
-	EncVCSecKey             []byte // encrypted with WpPubKey
-	WpGenerateSecretKeysURL string // so you know which wp to call
-	KeyId                   string // needed to generate wp secret key
-	Salt                    []byte // needed to generate wp secret key
-	Email                   string // who gets the VC
-	DisplayMap              []byte // how VC looks in wallet
+	EncVC       []byte `msgpack:"encoded_vc"`         // encrypted with VcPubKey
+	EncVCSecKey []byte `msgpack:"encoded_vc_sec_key"` // encrypted with WpPubKey
+	ProviderURL string `msgpack:"provider_url"`       // so you know which wp to call
+	KeyId       string `msgpack:"key_id"`             // needed to generate wp secret key
+	Salt        []byte `msgpack:"salt"`               // needed to generate wp secret key
+	Email       string `msgpack:"email"`              // who gets the VC
+	DisplayMap  []byte `msgpack:"display_map"`        // how VC looks in wallet
 }
 
 type SecretKeyData struct {

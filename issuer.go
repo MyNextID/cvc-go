@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/MyNextID/cvc-go/pkg"
+	"github.com/shamaton/msgpack/v2"
 )
 
 type IssuerConfig struct {
@@ -190,11 +191,11 @@ func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interfa
 func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, userMap map[string]*UserData, displayConf []byte) ([]byte, error) {
 	// initialize message pack
 	msgPack := &MessagePack{
-		WpGenerateSecretKeysURL: c.WpGeneratePublicKeysURL,
-		KeyId:                   userMap[uuid].KeyID,
-		Salt:                    userMap[uuid].Salt,
-		Email:                   userMap[uuid].Email,
-		DisplayMap:              displayConf,
+		ProviderURL: c.WpGeneratePublicKeysURL,
+		KeyId:       userMap[uuid].KeyID,
+		Salt:        userMap[uuid].Salt,
+		Email:       userMap[uuid].Email,
+		DisplayMap:  displayConf,
 	}
 	// encrypt credential
 	encVC, err := pkg.EncryptWithPublicKey(signedCredential, userMap[uuid].VcPubKey)
@@ -218,7 +219,7 @@ func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, 
 	msgPack.EncVCSecKey = encVCSecKey
 
 	// 	// convert pack to json (for now; final version will have a dedicated format)
-	msgPackBytes, err := json.Marshal(msgPack)
+	msgPackBytes, err := msgpack.Marshal(msgPack)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal MessagePack %w", err)
 	}
