@@ -103,3 +103,15 @@ func EncryptWithPublicKey(payload []byte, pkJWK jwk.Key) ([]byte, error) {
 
 	return encrypted, nil
 }
+
+func DecryptWithSecretKey(payload []byte, skJWK jwk.Key) ([]byte, error) {
+	// perform JWE decryption with ECDH-ES
+	decrypted, err := jwe.Decrypt(
+		payload,
+		jwe.WithKey(jwa.ECDH_ES, skJWK),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt with JWE: %w", err)
+	}
+	return decrypted, nil
+}
