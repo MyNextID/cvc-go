@@ -64,6 +64,55 @@ func (c *ProviderConfig) GeneratePublicKeys(requestJson []byte) ([]byte, error) 
 	return keyMapBytes, nil
 }
 
+func (c *ProviderConfig) GenerateSinglePublicKey(requestJson []byte) ([]byte, error) {
+	// unmarshal request
+	var hash string
+	err := json.Unmarshal(requestJson, &hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal request %s", err)
+	}
+
+	// prepare return item
+	keyMap := make(map[string]KeyData)
+
+	// Loop through the slice and fill the map
+	// generate key id
+	keyID := pkg.GenerateUUID()
+
+	// combine with hash
+	context := append([]byte(keyID), hash...)
+
+	dstByte := []byte(c.Dst)
+
+	// derive public key
+	derivedSecretKey, err := DeriveSecretKey(c.MasterSecretKey, context, dstByte)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive secret key %s", err)
+	}
+
+	derivedPublicKey, err := derivedSecretKey.PublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public key %s", err)
+	}
+
+	// convert to json bytes
+	pubKeyBytes, err := pkg.KeyJWKToJson(derivedPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal jwk to json bytes %w", err)
+	}
+
+	// make entry into map
+	keyMap[hash] = KeyData{KeyID: keyID, WpPubkey: pubKeyBytes}
+
+	// marshal for transport over http
+	keyMapBytes, err := json.Marshal(keyMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return keyMapBytes, nil
+}
+
 func (c *ProviderConfig) GenerateSecretKey(requestJson []byte, dst string) ([]byte, error) {
 	// unmarshal request
 	var keyData SecretKeyData
