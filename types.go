@@ -24,13 +24,13 @@ type KeyData struct {
 
 // MessagePack - todo define its final form
 type MessagePack struct {
-	EncVC       []byte `msgpack:"encoded_vc"`         // encrypted with VcPubKey
-	EncVCSecKey []byte `msgpack:"encoded_vc_sec_key"` // encrypted with WpPubKey
-	ProviderURL string `msgpack:"provider_url"`       // so you know which wp to call
-	KeyId       string `msgpack:"key_id"`             // needed to generate wp secret key
-	Salt        []byte `msgpack:"salt"`               // needed to generate wp secret key
-	Email       string `msgpack:"email"`              // who gets the VC
-	DisplayMap  []byte `msgpack:"display_map"`        // how VC looks in wallet
+	EncVC       []byte `json:"encrypted_vc" msgpack:"encrypted_vc"`                 // encrypted with VcPubKey
+	EncVCSecKey []byte `json:"encrypted_vc_sec_key" msgpack:"encrypted_vc_sec_key"` // encrypted with WpPubKey
+	ProviderURL string `json:"provider_url" msgpack:"provider_url"`                 // so you know which wp to call
+	KeyId       string `json:"key_id" msgpack:"key_id"`                             // needed to generate wp secret key
+	Salt        []byte `json:"salt" msgpack:"salt"`                                 // needed to generate wp secret key
+	Email       string `json:"email" msgpack:"email"`                               // who gets the VC
+	DisplayMap  []byte `json:"display_map" msgpack:"display_map"`                   // how VC looks in wallet
 }
 
 type SecretKeyData struct {

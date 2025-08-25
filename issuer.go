@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 
 	"github.com/MyNextID/cvc-go/pkg"
 	"github.com/shamaton/msgpack/v2"
 )
 
 type IssuerConfig struct {
-	WpGeneratePublicKeysURL string
-	WpGenerateSecretKeysURL string
+	ProviderURL string
 }
 
 // GetPublicKeysFromWalletProvider (F0) generates wallet provider public keys for a map of users
@@ -97,7 +97,8 @@ func (c *IssuerConfig) GetPublicKeysFromWalletProvider(emailMap map[string]strin
 
 func (c *IssuerConfig) GeneratePublicKeys(hashBytes []byte) (map[string]KeyData, error) {
 	// Build the HTTP POST request with JSON body
-	req, err := http.NewRequest("POST", c.WpGeneratePublicKeysURL, bytes.NewBuffer(hashBytes))
+	url := c.ProviderURL + path.Join("/", "generate", "pub-key")
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(hashBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %s", err)
 	}
@@ -191,7 +192,7 @@ func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interfa
 func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, userMap map[string]*UserData, displayConf []byte) ([]byte, error) {
 	// initialize message pack
 	msgPack := &MessagePack{
-		ProviderURL: c.WpGeneratePublicKeysURL,
+		ProviderURL: c.ProviderURL,
 		KeyId:       userMap[uuid].KeyID,
 		Salt:        userMap[uuid].Salt,
 		Email:       userMap[uuid].Email,
