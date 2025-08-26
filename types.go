@@ -33,8 +33,14 @@ type MessagePack struct {
 	DisplayMap  []byte `json:"display_map" msgpack:"display_map"`                   // how VC looks in wallet
 }
 
-type SecretKeyData struct {
+type CnfData struct {
 	KeyId string `json:"key_id"`
-	Salt  []byte `json:"salt"`
 	Email string `json:"email"`
+}
+
+type SecretKeyData struct {
+	CnfCode string `json:"cnf_code"`
+	KeyId   string `json:"key_id"`
+	Salt    []byte `json:"salt"`
+	Email   string `json:"email"`
 }
