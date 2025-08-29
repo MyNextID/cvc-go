@@ -48,12 +48,7 @@ func (p *Presentation) ValidateElement(element *Element) error {
 		return fmt.Errorf("title languages on element do not match languages on the presentation")
 	}
 
-	if element.Multilanguage {
-		valuesOK := element.VerifyMultiLangValues(p.Languages)
-		if !valuesOK {
-			return fmt.Errorf("element is multilang and the element values are either empty or do not match languages on the presentation")
-		}
-	} else {
+	if !element.Multilanguage {
 		// Check if element.Value is set
 		if element.Value == "" {
 			return fmt.Errorf("element is not multilang and the element value is an empty string - not allowed")
@@ -66,16 +61,6 @@ func (p *Presentation) ValidateElement(element *Element) error {
 func (e *Element) TitleContainsAllLanguages(existingLanguages []Language) bool {
 	for _, existingLang := range existingLanguages {
 		if _, exists := e.Titles[existingLang]; !exists {
-			return false
-		}
-	}
-	return true
-}
-
-func (e *Element) VerifyMultiLangValues(existingLanguages []Language) bool {
-	for _, existingLang := range existingLanguages {
-		value, exists := e.Values[existingLang]
-		if !exists || value == "" {
 			return false
 		}
 	}
