@@ -267,6 +267,22 @@ func (c *IssuerConfig) GetUserDataMap(userDataBytes []byte) (map[string]*UserDat
 			ud.WpPubKey = wpKey
 		}
 
+		if len(temp.VcSecKey) > 0 && string(temp.VcSecKey) != "null" {
+			vcSecKey, err := jwk.ParseKey(temp.VcSecKey)
+			if err != nil {
+				return nil, err
+			}
+			ud.VcSecKey = vcSecKey
+		}
+
+		if len(temp.VcPubKey) > 0 && string(temp.VcPubKey) != "null" {
+			vcPubKey, err := jwk.ParseKey(temp.VcPubKey)
+			if err != nil {
+				return nil, err
+			}
+			ud.VcPubKey = vcPubKey
+		}
+
 		userData[k] = ud
 	}
 
