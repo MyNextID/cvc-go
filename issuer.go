@@ -11,6 +11,7 @@ import (
 	"path"
 
 	"github.com/MyNextID/cvc-go/pkg"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/shamaton/msgpack/v2"
 )
 
@@ -226,4 +227,48 @@ func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, 
 	}
 
 	return msgPackBytes, nil
+}
+
+// GetUserDataMap takes raw userDataBytes that are usually stored in the database and converts them to correct format that the rest of IssuerConfig methods use.
+func (c *IssuerConfig) GetUserDataMap(userDataBytes []byte) (map[string]*UserData, error) {
+	// Wallet provider integration & generating msgpack file
+	// Temporary struct for unmarshaling
+	type userDataTemp struct {
+		Email    string          `json:"Email"`
+		KeyID    string          `json:"KeyID"`
+		Salt     []byte          `json:"Salt"`
+		WpPubKey json.RawMessage `json:"WpPubKey"`
+		VcSecKey json.RawMessage `json:"VcSecKey"`
+		VcPubKey json.RawMessage `json:"VcPubKey"`
+	}
+
+	// Unmarshal to temp struct first
+	var tempData map[string]userDataTemp
+	err := json.Unmarshal(userDataBytes, &tempData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to final structure
+	userData := make(map[string]*UserData)
+	for k, temp := range tempData {
+		ud := &UserData{
+			Email: temp.Email,
+			KeyID: temp.KeyID,
+			Salt:  temp.Salt,
+		}
+
+		// Parse JWK keys if they're not null
+		if len(temp.WpPubKey) > 0 && string(temp.WpPubKey) != "null" {
+			wpKey, err := jwk.ParseKey(temp.WpPubKey)
+			if err != nil {
+				return nil, err
+			}
+			ud.WpPubKey = wpKey
+		}
+
+		userData[k] = ud
+	}
+
+	return userData, nil
 }

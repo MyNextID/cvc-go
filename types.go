@@ -22,15 +22,16 @@ type KeyData struct {
 	WpPubkey []byte `json:"wp_pubkey"`
 }
 
-// MessagePack - todo define its final form
+// MessagePack defines values that are stored in the message pack binary format
 type MessagePack struct {
-	EncVC       []byte `json:"encrypted_vc" msgpack:"encrypted_vc"`                 // encrypted with VcPubKey
-	EncVCSecKey []byte `json:"encrypted_vc_sec_key" msgpack:"encrypted_vc_sec_key"` // encrypted with WpPubKey
-	ProviderURL string `json:"provider_url" msgpack:"provider_url"`                 // so you know which wp to call
-	KeyId       string `json:"key_id" msgpack:"key_id"`                             // needed to generate wp secret key
-	Salt        []byte `json:"salt" msgpack:"salt"`                                 // needed to generate wp secret key
-	Email       string `json:"email" msgpack:"email"`                               // who gets the VC
-	DisplayMap  []byte `json:"display_map" msgpack:"display_map"`                   // how VC looks in wallet
+	EncVC             []byte `json:"encrypted_vc" msgpack:"encrypted_vc"`                 // encrypted with VcPubKey
+	EncVCSecKey       []byte `json:"encrypted_vc_sec_key" msgpack:"encrypted_vc_sec_key"` // encrypted with WpPubKey
+	ProviderURL       string `json:"provider_url" msgpack:"provider_url"`                 // so you know which wp to call
+	KeyId             string `json:"key_id" msgpack:"key_id"`                             // needed to generate wp secret key
+	Salt              []byte `json:"salt" msgpack:"salt"`                                 // needed to generate wp secret key
+	Email             string `json:"email" msgpack:"email"`                               // who gets the VC
+	DisplayMap        []byte `json:"display_map" msgpack:"display_map"`                   // how VC looks in wallet
+	PreviewDisplayMap []byte `json:"preview_display_map" msgpack:"preview_display_map"`   // preview of VC before he adds it to the wallet
 }
 
 type CnfData struct {
