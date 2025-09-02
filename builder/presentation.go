@@ -8,6 +8,8 @@ import (
 type Presentation struct {
 	Languages []Language
 	Groups    []Group
+	Title     map[Language]string
+	Issuer    string
 }
 
 func (p *Presentation) Create() ([]byte, error) {
@@ -70,8 +72,10 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 	}
 
 	type OutputPresentation struct {
-		Languages []string      `json:"languages"`
-		Groups    []OutputGroup `json:"groups"`
+		Languages []string          `json:"languages"`
+		Groups    []OutputGroup     `json:"groups"`
+		Title     map[string]string `json:"title"`
+		Issuer    string            `json:"issuer"`
 	}
 
 	languages := make([]string, len(p.Languages))
@@ -124,14 +128,23 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 		groups[i] = outputGroup
 	}
 
+	titles := make(map[string]string)
+	for lang, title := range p.Title {
+		titles[lang.Code] = title
+	}
+
 	output := OutputPresentation{
 		Languages: languages,
 		Groups:    groups,
+		Title:     titles,
+		Issuer:    p.Issuer,
 	}
 
 	result := make(map[string]interface{})
 	result["languages"] = output.Languages
 	result["groups"] = output.Groups
+	result["title"] = output.Title
+	result["issuer"] = output.Issuer
 
 	return result
 }
