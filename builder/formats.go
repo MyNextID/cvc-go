@@ -11,11 +11,23 @@ type FormatType string
 const (
 	FormatDateTime FormatType = "date-time"
 	FormatDuration FormatType = "duration"
+	FormatJPEG     FormatType = "jpeg"
+	FormatPNG      FormatType = "png"
 )
 
 // ElementFormat represents the format configuration for an element
 type ElementFormat struct {
 	Type FormatType `json:"-"` // Don't serialize this field
+}
+
+// NewJpegFormat creates a new format for displaying base64 jpeg image
+func NewJpegFormat() ElementFormat {
+	return ElementFormat{Type: FormatJPEG}
+}
+
+// NewPngFormat creates a new format for displaying base64 png image
+func NewPngFormat() ElementFormat {
+	return ElementFormat{Type: FormatPNG}
 }
 
 // NewDateTimeFormat creates a new DateTime format
