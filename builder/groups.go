@@ -14,7 +14,7 @@ func NewGroup(elements []Element, id uint, titles map[Language]string) (*Group, 
 		return nil, fmt.Errorf("requires atleast one element in a group")
 	}
 
-	if len(titles) != 0 {
+	if len(titles) == 0 {
 		return &Group{
 			ID:       id,
 			Elements: elements,
