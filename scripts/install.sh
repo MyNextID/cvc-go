@@ -217,13 +217,9 @@ download_and_extract() {
 
     local archive_ext lib_ext
     case "$platform" in
-        "darwin"|"linux")
+        "darwin"|"linux"|"windows")
             archive_ext="tar.gz"
             lib_ext="a"
-            ;;
-        "windows")
-            archive_ext="zip"
-            lib_ext="lib"
             ;;
         *)
             print_error "Unknown platform: $platform"
