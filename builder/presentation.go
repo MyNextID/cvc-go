@@ -6,12 +6,15 @@ import (
 )
 
 type Presentation struct {
-	Languages   []Language
-	Groups      []Group
+	Languages []Language
+	Groups    []Group
+
 	Title       map[Language]string
 	Description map[Language]string
-	Issuer      string
-	IssuerLogo  string
+
+	Issuer                string
+	IssuerLogo            string
+	IssuerLogoContentType string
 }
 
 func (p *Presentation) Create() ([]byte, error) {
@@ -74,12 +77,13 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 	}
 
 	type OutputPresentation struct {
-		Languages   []string          `json:"languages"`
-		Groups      []OutputGroup     `json:"groups"`
-		Title       map[string]string `json:"title"`
-		Description map[string]string `json:"descriptions"`
-		Issuer      string            `json:"issuer"`
-		IssuerLogo  string            `json:"issuer_logo"`
+		Languages             []string          `json:"languages"`
+		Groups                []OutputGroup     `json:"groups"`
+		Title                 map[string]string `json:"title"`
+		Description           map[string]string `json:"descriptions"`
+		Issuer                string            `json:"issuer"`
+		IssuerLogo            string            `json:"issuer_logo"`
+		IssuerLogoContentType string            `json:"issuer_logo_content_type"`
 	}
 
 	languages := make([]string, len(p.Languages))
@@ -143,12 +147,13 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 	}
 
 	output := OutputPresentation{
-		Languages:   languages,
-		Groups:      groups,
-		Title:       titles,
-		Description: descriptions,
-		Issuer:      p.Issuer,
-		IssuerLogo:  p.IssuerLogo,
+		Languages:             languages,
+		Groups:                groups,
+		Title:                 titles,
+		Description:           descriptions,
+		Issuer:                p.Issuer,
+		IssuerLogo:            p.IssuerLogo,
+		IssuerLogoContentType: p.IssuerLogoContentType,
 	}
 
 	result := make(map[string]interface{})
@@ -158,6 +163,7 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 	result["descriptions"] = output.Description
 	result["issuer"] = output.Issuer
 	result["issuer_logo"] = output.IssuerLogo
+	result["issuer_logo_content_type"] = output.IssuerLogoContentType
 
 	return result
 }
