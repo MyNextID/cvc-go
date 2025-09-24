@@ -12,6 +12,8 @@ type Presentation struct {
 	Title       map[Language]string
 	Description map[Language]string
 
+	ExpirationDate string
+
 	Issuer                string
 	IssuerLogo            string
 	IssuerLogoContentType string
@@ -79,6 +81,7 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 	type OutputPresentation struct {
 		Languages             []string          `json:"languages"`
 		Groups                []OutputGroup     `json:"groups"`
+		ExpirationDate        string            `json:"expiration_date"`
 		Title                 map[string]string `json:"title"`
 		Description           map[string]string `json:"descriptions"`
 		Issuer                string            `json:"issuer"`
@@ -149,6 +152,7 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 	output := OutputPresentation{
 		Languages:             languages,
 		Groups:                groups,
+		ExpirationDate:        p.ExpirationDate,
 		Title:                 titles,
 		Description:           descriptions,
 		Issuer:                p.Issuer,
@@ -159,6 +163,7 @@ func (p *Presentation) buildOutput() map[string]interface{} {
 	result := make(map[string]interface{})
 	result["languages"] = output.Languages
 	result["groups"] = output.Groups
+	result["expiration_date"] = output.ExpirationDate
 	result["title"] = output.Title
 	result["descriptions"] = output.Description
 	result["issuer"] = output.Issuer
