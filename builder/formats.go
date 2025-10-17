@@ -9,6 +9,7 @@ import (
 type FormatType string
 
 const (
+	FormatDate     FormatType = "date"
 	FormatDateTime FormatType = "date-time"
 	FormatDuration FormatType = "duration"
 	FormatJPEG     FormatType = "jpeg"
@@ -28,6 +29,11 @@ func NewJpegFormat() ElementFormat {
 // NewPngFormat creates a new format for displaying base64 png image
 func NewPngFormat() ElementFormat {
 	return ElementFormat{Type: FormatPNG}
+}
+
+// NewDateFormat creates a new Date format
+func NewDateFormat() ElementFormat {
+	return ElementFormat{Type: FormatDate}
 }
 
 // NewDateTimeFormat creates a new DateTime format
