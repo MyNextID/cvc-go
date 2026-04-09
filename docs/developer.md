@@ -5,7 +5,9 @@
 > and deliver verifiable credentials in a secure two-party key split architecture.
 
 **Status:** 🟢 Active
+
 **Stack:** `Go` `CGo` `NIST P-256` `JWK` `MessagePack`  
+
 **Owner:** @peter.paravinja — *(the go-to person for questions)*  
 
 ---
