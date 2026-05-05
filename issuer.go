@@ -190,7 +190,7 @@ func (c *IssuerConfig) AddCnfToPayload(uuid string, vcPayload map[string]interfa
 // PrepareMessagePack (F2) encrypts the credential with credential public key and encrypts the credential secret key
 // with wallet provider public key. It returns the message pack to be send to the credential
 // recipient email
-func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, userMap map[string]*UserData, displayConf, previewDisplayConf []byte) ([]byte, error) {
+func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, userMap map[string]*UserData, displayConf, previewDisplayConf []byte, credentialType string) ([]byte, error) {
 	// initialize message pack
 	msgPack := &MessagePack{
 		ProviderURL:       c.ProviderURL,
@@ -199,6 +199,7 @@ func (c *IssuerConfig) PrepareMessagePack(signedCredential []byte, uuid string, 
 		Email:             userMap[uuid].Email,
 		DisplayMap:        displayConf,
 		PreviewDisplayMap: previewDisplayConf,
+		CredentialType:    credentialType,
 	}
 	// encrypt credential
 	encVC, err := pkg.EncryptWithPublicKey(signedCredential, userMap[uuid].VcPubKey)
