@@ -32,6 +32,7 @@ type MessagePack struct {
 	Email             string `json:"email" msgpack:"email"`                               // who gets the VC
 	DisplayMap        []byte `json:"display_map" msgpack:"display_map"`                   // how VC looks in wallet
 	PreviewDisplayMap []byte `json:"preview_display_map" msgpack:"preview_display_map"`   // preview of VC before he adds it to the wallet
+	CredentialType    string `json:"credential_type" msgpack:"credential_type"`           // type of the credential, needed for wallet to know how to display it
 }
 
 type CnfData struct {
